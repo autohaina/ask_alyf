@@ -16,6 +16,15 @@
   "allow_code_search",
   "allow_file_upload",
   "allow_field_agent",
+  "panel_config_tab",
+  "panel_title",
+  "panel_subtitle",
+  "panel_logo",
+  "panel_column_break",
+  "input_placeholder",
+  "panel_disclaimer",
+  "show_file_upload_button",
+  "show_voice_input_button",
   "chat_provider_tab",
   "llm_provider",
   "base_url",
@@ -105,6 +114,57 @@
    "fieldname": "allow_file_upload",
    "fieldtype": "Check",
    "label": "Allow File Upload"
+  },
+  {
+   "fieldname": "panel_config_tab",
+   "fieldtype": "Tab Break",
+   "label": "面板配置"
+  },
+  {
+   "default": "海纳百川",
+   "fieldname": "panel_title",
+   "fieldtype": "Data",
+   "label": "面板标题"
+  },
+  {
+   "default": "AI协作助手",
+   "fieldname": "panel_subtitle",
+   "fieldtype": "Data",
+   "label": "面板副标题"
+  },
+  {
+   "default": "/assets/ask_alyf/img/aizs.gif",
+   "fieldname": "panel_logo",
+   "fieldtype": "Attach Image",
+   "label": "悬浮图标"
+  },
+  {
+   "fieldname": "panel_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "请输入您的业务问题...",
+   "fieldname": "input_placeholder",
+   "fieldtype": "Data",
+   "label": "输入框占位文案"
+  },
+  {
+   "default": "AI可能也会出错，包括关于数字和人员信息的内容。",
+   "fieldname": "panel_disclaimer",
+   "fieldtype": "Small Text",
+   "label": "底部免责声明"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_file_upload_button",
+   "fieldtype": "Check",
+   "label": "显示附件按钮"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_voice_input_button",
+   "fieldtype": "Check",
+   "label": "显示语音按钮"
   },
   {
    "fieldname": "chat_provider_tab",

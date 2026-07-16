@@ -65,8 +65,15 @@ class AskALYFSettings(Document):
 		base_url: DF.Data | None
 		enabled: DF.Check
 		excluded_doctypes: DF.TableMultiSelect[AskALYFExcludedDocType]
+		input_placeholder: DF.Data | None
 		llm_provider: DF.Literal["OpenAI", "OpenAI Compatible"]
 		model: DF.Autocomplete | None
+		panel_disclaimer: DF.SmallText | None
+		panel_logo: DF.AttachImage | None
+		panel_subtitle: DF.Data | None
+		panel_title: DF.Data | None
+		show_file_upload_button: DF.Check
+		show_voice_input_button: DF.Check
 		support_phone_number: DF.Phone | None
 		system_prompt: DF.Code | None
 		vision_api_key: DF.Password | None

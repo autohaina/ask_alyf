@@ -24,6 +24,56 @@ from ask_alyf.ask_alyf.utils import chunk_text, dumps, loads
 MODE_ASK = "Ask"
 MODE_AGENT = "Agent"
 ASK_ALYF_USER_ROLE = "Ask ALYF User"
+DEFAULT_PANEL_CONFIG = {
+	"title": "海纳百川",
+	"subtitle": "AI协作助手",
+	"input_placeholder": "请输入您的业务问题...",
+	"disclaimer": "AI可能也会出错，包括关于数字和人员信息的内容。",
+	"logo_url": "/assets/ask_alyf/img/aizs.gif",
+	"show_file_upload_button": True,
+	"show_voice_input_button": True,
+}
+
+
+def _get_setting_text(settings: Any, fieldname: str, default: str) -> str:
+	value = (getattr(settings, fieldname, None) or "").strip()
+	return value or default
+
+
+def _get_setting_check(settings: Any, fieldname: str, default: bool) -> bool:
+	value = getattr(settings, fieldname, None)
+	if value in (None, ""):
+		return default
+	try:
+		doctype = getattr(settings, "doctype", "Ask ALYF Settings")
+		if not frappe.db.exists("Singles", {"doctype": doctype, "field": fieldname}):
+			return default
+	except Exception:
+		pass
+	return bool(cint(value))
+
+
+def get_panel_config(settings: Any | None = None) -> dict:
+	panel_config = DEFAULT_PANEL_CONFIG.copy()
+	if not settings:
+		return panel_config
+
+	panel_config.update(
+		{
+			"title": _get_setting_text(settings, "panel_title", DEFAULT_PANEL_CONFIG["title"]),
+			"subtitle": _get_setting_text(settings, "panel_subtitle", DEFAULT_PANEL_CONFIG["subtitle"]),
+			"input_placeholder": _get_setting_text(
+				settings,
+				"input_placeholder",
+				DEFAULT_PANEL_CONFIG["input_placeholder"],
+			),
+			"disclaimer": _get_setting_text(settings, "panel_disclaimer", DEFAULT_PANEL_CONFIG["disclaimer"]),
+			"logo_url": _get_setting_text(settings, "panel_logo", DEFAULT_PANEL_CONFIG["logo_url"]),
+			"show_file_upload_button": _get_setting_check(settings, "show_file_upload_button", True),
+			"show_voice_input_button": _get_setting_check(settings, "show_voice_input_button", True),
+		}
+	)
+	return panel_config
 
 
 def _truncate_doc_for_size(
@@ -82,14 +132,18 @@ def get_ask_alyf_boot_payload() -> dict:
 	agent_mode_enabled = False
 	field_agent_enabled = False
 	file_upload_enabled = False
+	voice_input_enabled = DEFAULT_PANEL_CONFIG["show_voice_input_button"]
 	support_phone_number = ""
 	support_phone_uri = ""
+	panel_config = get_panel_config()
 
 	try:
 		settings = get_settings()
 		agent_mode_enabled = bool(settings.allow_agent_mode)
 		field_agent_enabled = bool(settings.allow_field_agent)
-		file_upload_enabled = bool(settings.allow_file_upload)
+		panel_config = get_panel_config(settings)
+		file_upload_enabled = bool(cint(settings.allow_file_upload) and panel_config["show_file_upload_button"])
+		voice_input_enabled = bool(panel_config["show_voice_input_button"])
 		api_key = (settings.get_password("api_key", raise_exception=False) or "").strip()
 		configured = bool(api_key and (settings.model or "").strip())
 		support_phone_number = (settings.support_phone_number or "").strip()
@@ -103,6 +157,8 @@ def get_ask_alyf_boot_payload() -> dict:
 		"agent_mode_enabled": agent_mode_enabled,
 		"field_agent_enabled": field_agent_enabled,
 		"file_upload_enabled": file_upload_enabled,
+		"voice_input_enabled": voice_input_enabled,
+		"panel_config": panel_config,
 		"support_phone_number": support_phone_number,
 		"support_phone_uri": support_phone_uri,
 		"default_mode": MODE_ASK,

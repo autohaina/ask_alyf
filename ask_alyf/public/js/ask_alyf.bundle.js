@@ -551,15 +551,15 @@ import "./field_agent";
 			const root = document.createElement("div");
 			root.className = "ask_alyf-root";
 			root.innerHTML = `
-				<button class="ask_alyf-bubble" type="button" title="${__("Open Ask ALYF")}" aria-label="${__(
-					"Open Ask ALYF",
-				)}"><img class="ask_alyf-bubble-logo" src="/assets/ask_alyf/img/logo.png" alt="" aria-hidden="true"></button>
+				<button class="ask_alyf-bubble" type="button" title="${__("打开AI助手")}" aria-label="${__(
+					"打开AI助手",
+				)}"><img class="ask_alyf-bubble-logo" src="/assets/ask_alyf/img/aizs.gif" alt="" aria-hidden="true"></button>
 				<div class="ask_alyf-panel ask_alyf-hidden">
 					<div class="ask_alyf-resize-handle" title="${__("Resize chat window")}"></div>
 					<div class="ask_alyf-header">
 						<div>
-							<div class="ask_alyf-title">Ask ALYF</div>
-							<div class="ask_alyf-subtitle">${__("ERPNext assistant")}</div>
+							<div class="ask_alyf-title">海纳百川</div>
+							<div class="ask_alyf-subtitle">AI协作助手</div>
 						</div>
 						<div class="ask_alyf-actions">
 							<button class="ask_alyf-header-button ask_alyf-new-chat btn btn-secondary btn-sm" type="button" title="${__(
@@ -576,7 +576,7 @@ import "./field_agent";
 						</div>
 					</div>
 					<div class="form-tabs-list ask_alyf-tabs-list">
-						<ul class="nav form-tabs ask_alyf-tabs" role="tablist" aria-label="${__("Ask ALYF sections")}">
+						<ul class="nav form-tabs ask_alyf-tabs" role="tablist" aria-label="${__("AI助手分区")}">
 							<li class="nav-item">
 								<button class="nav-link ask_alyf-tab active" type="button" role="tab" data-tab="chat" aria-selected="true">${__(
 									"Chat",
@@ -594,9 +594,7 @@ import "./field_agent";
 						<div class="ask_alyf-messages"></div>
 						<div class="ask_alyf-composer">
 							<div class="ask_alyf-input-shell">
-								<textarea class="ask_alyf-input" rows="3" placeholder="${__(
-									"Ask about this ERPNext instance",
-								)}"></textarea>
+								<textarea class="ask_alyf-input" rows="3" placeholder="请输入您的业务问题..."></textarea>
 								<div class="ask_alyf-mode-dropdown">
 									<button class="ask_alyf-mode-trigger btn btn-secondary btn-sm" type="button" aria-haspopup="menu" aria-expanded="false">
 										<span class="ask_alyf-mode-trigger-label"></span>
@@ -621,9 +619,7 @@ import "./field_agent";
 									<button class="ask_alyf-send btn btn-primary btn-sm" type="button">${__("Send")}</button>
 								</div>
 							</div>
-							<div class="ask_alyf-disclaimer">${__(
-								"Ask ALYF is an AI and can make mistakes, including with numbers and information about people.",
-							)}</div>
+							<div class="ask_alyf-disclaimer">AI可能也会出错，包括关于数字和人员信息的内容。</div>
 						</div>
 					</div>
 					<div class="ask_alyf-history-view ask_alyf-hidden">
@@ -640,6 +636,10 @@ import "./field_agent";
 			this.warningEl = root.querySelector(".ask_alyf-config-warning");
 			this.inputEl = root.querySelector(".ask_alyf-input");
 			this.bubbleEl = root.querySelector(".ask_alyf-bubble");
+			this.bubbleLogoEl = root.querySelector(".ask_alyf-bubble-logo");
+			this.titleEl = root.querySelector(".ask_alyf-title");
+			this.subtitleEl = root.querySelector(".ask_alyf-subtitle");
+			this.disclaimerEl = root.querySelector(".ask_alyf-disclaimer");
 			this.sendEl = root.querySelector(".ask_alyf-send");
 			this.attachEl = root.querySelector(".ask_alyf-attach");
 			this.micEl = root.querySelector(".ask_alyf-mic");
@@ -663,8 +663,11 @@ import "./field_agent";
 				optionEl.addEventListener("click", (event) => this.onModeOptionClick(event));
 			});
 			document.addEventListener("click", this.boundDocumentClick);
+			this.applyPanelConfig();
 			this.syncModeControl();
 			this.syncSupportPhoneAction(frappe?.boot?.ask_alyf || {});
+			this.syncFileUploadButton();
+			this.syncVoiceInputButton();
 
 			root.querySelector(".ask_alyf-bubble").addEventListener("click", () => this.toggle(true));
 			root.querySelector(".ask_alyf-close").addEventListener("click", () => this.toggle(false));
@@ -750,16 +753,17 @@ import "./field_agent";
 				},
 			});
 			const askAlyfBoot = response.message.ask_alyf || {};
+			frappe.boot.ask_alyf = askAlyfBoot;
 			await this.applyConversation(response.message.conversation);
+			this.applyPanelConfig();
 			this.syncSupportPhoneAction(askAlyfBoot);
 			this.syncFileUploadButton();
+			this.syncVoiceInputButton();
 			await this.refreshConversationList();
 
 			if (!askAlyfBoot.configured) {
 				this.warningEl.classList.remove("ask_alyf-hidden");
-				this.warningEl.textContent = __(
-					"Ask ALYF is visible, but no API key/model is configured yet in Ask ALYF Settings.",
-				);
+				this.warningEl.textContent = __("AI助手已显示，但尚未在设置中配置 API Key 或模型。");
 			}
 		}
 
@@ -900,6 +904,46 @@ import "./field_agent";
 			return Boolean(askAlyfSettings.agent_mode_enabled);
 		}
 
+		getPanelConfig() {
+			const defaultConfig = {
+				title: "海纳百川",
+				subtitle: "AI协作助手",
+				input_placeholder: "请输入您的业务问题...",
+				disclaimer: "AI可能也会出错，包括关于数字和人员信息的内容。",
+				logo_url: "/assets/ask_alyf/img/aizs.gif",
+				show_file_upload_button: true,
+				show_voice_input_button: true,
+			};
+			return Object.assign(defaultConfig, frappe?.boot?.ask_alyf?.panel_config || {});
+		}
+
+		applyPanelConfig() {
+			const panelConfig = this.getPanelConfig();
+			const title = panelConfig.title || "海纳百川";
+
+			if (this.titleEl) {
+				this.titleEl.textContent = title;
+			}
+			if (this.subtitleEl) {
+				this.subtitleEl.textContent = panelConfig.subtitle || "AI协作助手";
+			}
+			if (this.inputEl) {
+				this.inputEl.placeholder = panelConfig.input_placeholder || "请输入您的业务问题...";
+			}
+			if (this.disclaimerEl) {
+				this.disclaimerEl.textContent =
+					panelConfig.disclaimer || "AI可能也会出错，包括关于数字和人员信息的内容。";
+			}
+			if (this.bubbleLogoEl) {
+				this.bubbleLogoEl.src = panelConfig.logo_url || "/assets/ask_alyf/img/aizs.gif";
+			}
+			if (this.bubbleEl) {
+				const label = __("打开{0}").replace("{0}", title);
+				this.bubbleEl.title = label;
+				this.bubbleEl.setAttribute("aria-label", label);
+			}
+		}
+
 		isFileUploadEnabled() {
 			return Boolean(frappe?.boot?.ask_alyf?.file_upload_enabled);
 		}
@@ -911,8 +955,27 @@ import "./field_agent";
 			this.attachEl.classList.toggle("ask_alyf-hidden", !this.isFileUploadEnabled());
 		}
 
+		isVoiceInputEnabled() {
+			const askAlyfSettings = frappe?.boot?.ask_alyf || {};
+			if (Object.prototype.hasOwnProperty.call(askAlyfSettings, "voice_input_enabled")) {
+				return Boolean(askAlyfSettings.voice_input_enabled);
+			}
+			return Boolean(this.getPanelConfig().show_voice_input_button);
+		}
+
+		syncVoiceInputButton() {
+			if (!this.micEl) {
+				return;
+			}
+			const enabled = this.isVoiceInputEnabled();
+			this.micEl.classList.toggle("ask_alyf-hidden", !enabled);
+			if (!enabled && this.voiceRecognition) {
+				this.voiceRecognition.stop();
+			}
+		}
+
 		openFileUploader() {
-			if (!this.state.conversation?.name || this.state.loading) {
+			if (!this.isFileUploadEnabled() || !this.state.conversation?.name || this.state.loading) {
 				return;
 			}
 			new frappe.ui.FileUploader({
@@ -2327,6 +2390,10 @@ import "./field_agent";
 		}
 
 		startVoiceInput() {
+			if (!this.isVoiceInputEnabled()) {
+				return;
+			}
+
 			const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 			if (!Recognition) {
 				frappe.msgprint(__("Your browser does not support voice input."));

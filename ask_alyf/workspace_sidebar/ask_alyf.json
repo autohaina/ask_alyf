@@ -11,7 +11,7 @@
    "icon": "settings",
    "indent": 0,
    "keep_closed": 0,
-   "label": "Ask ALYF \u8bbe\u7f6e",
+   "label": "AI\u52a9\u624b\u8bbe\u7f6e",
    "link_to": "Ask ALYF Settings",
    "link_type": "DocType",
    "show_arrow": 0,
@@ -23,7 +23,7 @@
    "icon": "list",
    "indent": 0,
    "keep_closed": 0,
-   "label": "Ask ALYF \u5bf9\u8bdd",
+   "label": "AI\u52a9\u624b\u5bf9\u8bdd",
    "link_to": "Ask ALYF Conversation",
    "link_type": "DocType",
    "show_arrow": 0,
@@ -35,7 +35,7 @@
    "icon": "list",
    "indent": 0,
    "keep_closed": 0,
-   "label": "Ask ALYF",
+   "label": "AI\u52a9\u624b",
    "link_to": "Ask ALYF Skill",
    "link_type": "DocType",
    "show_arrow": 0,
@@ -48,5 +48,5 @@
  "name": "Ask ALYF",
  "owner": "Administrator",
  "standard": 1,
- "title": "Ask ALYF"
+ "title": "AI\u52a9\u624b"
 }
