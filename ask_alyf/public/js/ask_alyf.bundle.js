@@ -1483,10 +1483,32 @@ import "./field_agent";
 			];
 		}
 
+		getConfiguredSuggestedPrompts(userRoles) {
+			const configuredPrompts = frappe?.boot?.ask_alyf?.suggested_prompts || [];
+			if (!Array.isArray(configuredPrompts) || !configuredPrompts.length) {
+				return [];
+			}
+
+			return configuredPrompts
+				.map((prompt) => ({
+					role: (prompt?.role || "").toString().trim(),
+					group: (prompt?.group || "").toString().trim(),
+					text: (prompt?.text || "").toString().trim(),
+				}))
+				.filter((prompt) => prompt.role && prompt.group && prompt.text && userRoles.has(prompt.role))
+				.slice(0, 3);
+		}
+
 		getSuggestedPrompts() {
 			const userRoles = new Set(frappe.user_roles || []);
 			if (!userRoles.size) {
 				return [];
+			}
+
+			const hasConfiguredPrompts = Boolean(frappe?.boot?.ask_alyf?.suggested_prompts_configured);
+			const configuredPrompts = this.getConfiguredSuggestedPrompts(userRoles);
+			if (hasConfiguredPrompts) {
+				return configuredPrompts;
 			}
 
 			const matchingGroups = this.getRolePrompts().filter((group) =>

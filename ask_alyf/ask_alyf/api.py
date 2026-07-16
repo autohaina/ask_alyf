@@ -80,6 +80,32 @@ def get_panel_config(settings: Any | None = None) -> dict:
 	return panel_config
 
 
+def get_suggested_prompts(settings: Any | None = None) -> list[dict[str, str]]:
+	if not settings:
+		return []
+
+	prompts = []
+	for row in getattr(settings, "suggested_prompts", []) or []:
+		if not bool(cint(getattr(row, "enabled", 0))):
+			continue
+
+		role = (getattr(row, "role", "") or "").strip()
+		group = (getattr(row, "group_label", "") or "").strip()
+		text = (getattr(row, "prompt", "") or "").strip()
+		if not role or not group or not text:
+			continue
+
+		prompts.append(
+			{
+				"role": role,
+				"group": group,
+				"text": text,
+			}
+		)
+
+	return prompts
+
+
 def _truncate_doc_for_size(
 	doc: dict,
 	table_fieldnames: set | None = None,
@@ -140,6 +166,8 @@ def get_ask_alyf_boot_payload() -> dict:
 	support_phone_number = ""
 	support_phone_uri = ""
 	panel_config = get_panel_config()
+	suggested_prompts = []
+	suggested_prompts_configured = False
 
 	try:
 		settings = get_settings()
@@ -152,6 +180,8 @@ def get_ask_alyf_boot_payload() -> dict:
 		configured = bool(api_key and (settings.model or "").strip())
 		support_phone_number = (settings.support_phone_number or "").strip()
 		support_phone_uri = get_support_phone_uri(support_phone_number)
+		suggested_prompts_configured = bool(getattr(settings, "suggested_prompts", []) or [])
+		suggested_prompts = get_suggested_prompts(settings)
 	except Exception:
 		pass
 
@@ -163,6 +193,8 @@ def get_ask_alyf_boot_payload() -> dict:
 		"file_upload_enabled": file_upload_enabled,
 		"voice_input_enabled": voice_input_enabled,
 		"panel_config": panel_config,
+		"suggested_prompts": suggested_prompts,
+		"suggested_prompts_configured": suggested_prompts_configured,
 		"support_phone_number": support_phone_number,
 		"support_phone_uri": support_phone_uri,
 		"default_mode": MODE_ASK,

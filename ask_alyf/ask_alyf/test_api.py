@@ -20,6 +20,7 @@ class UnitTestAskALYFApi(UnitTestCase):
 			input_placeholder = ""
 			panel_disclaimer = ""
 			model = ""
+			suggested_prompts = []
 			support_phone_number = ""
 
 			def get_password(self, fieldname, raise_exception=False):
@@ -62,6 +63,53 @@ class UnitTestAskALYFApi(UnitTestCase):
 		self.assertTrue(payload["panel_config"]["show_voice_input_button"])
 		self.assertFalse(payload["file_upload_enabled"])
 		self.assertTrue(payload["voice_input_enabled"])
+		self.assertEqual(payload["suggested_prompts"], [])
+		self.assertFalse(payload["suggested_prompts_configured"])
+
+	def test_boot_payload_includes_role_bound_suggested_prompts(self):
+		with (
+			patch.object(
+				api,
+				"get_settings",
+				return_value=self.make_settings(
+					suggested_prompts=[
+						SimpleNamespace(
+							enabled=1,
+							role="Purchase User",
+							group_label="采购",
+							prompt="查看逾期采购订单",
+						),
+						SimpleNamespace(
+							enabled=0,
+							role="HR User",
+							group_label="人力资源",
+							prompt="今天谁请假",
+						),
+						SimpleNamespace(
+							enabled=1,
+							role="",
+							group_label="制造",
+							prompt="无角色提示",
+						),
+					],
+				),
+			),
+			patch.object(api, "can_access_ask_alyf", return_value=True),
+			patch.object(api.frappe.db, "exists", return_value=True),
+		):
+			payload = api.get_ask_alyf_boot_payload()
+
+		self.assertEqual(
+			payload["suggested_prompts"],
+			[
+				{
+					"role": "Purchase User",
+					"group": "采购",
+					"text": "查看逾期采购订单",
+				}
+			],
+		)
+		self.assertTrue(payload["suggested_prompts_configured"])
 
 	def test_boot_payload_uses_custom_panel_config_and_combines_upload_switches(self):
 		with (

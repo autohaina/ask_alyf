@@ -12,6 +12,9 @@ if TYPE_CHECKING:
 	from ask_alyf.ask_alyf.doctype.ask_alyf_excluded_doctype.ask_alyf_excluded_doctype import (
 		AskALYFExcludedDocType,
 	)
+	from ask_alyf.ask_alyf.doctype.ask_alyf_suggested_prompt.ask_alyf_suggested_prompt import (
+		AskALYFSuggestedPrompt,
+	)
 
 MODEL_CONFIG_FIELDS = {
 	"chat": {
@@ -56,6 +59,9 @@ class AskALYFSettings(Document):
 		from ask_alyf.ask_alyf.doctype.ask_alyf_excluded_doctype.ask_alyf_excluded_doctype import (
 			AskALYFExcludedDocType,
 		)
+		from ask_alyf.ask_alyf.doctype.ask_alyf_suggested_prompt.ask_alyf_suggested_prompt import (
+			AskALYFSuggestedPrompt,
+		)
 
 		allow_agent_mode: DF.Check
 		allow_code_search: DF.Check
@@ -74,6 +80,7 @@ class AskALYFSettings(Document):
 		panel_title: DF.Data | None
 		show_file_upload_button: DF.Check
 		show_voice_input_button: DF.Check
+		suggested_prompts: DF.Table[AskALYFSuggestedPrompt]
 		support_phone_number: DF.Phone | None
 		system_prompt: DF.Code | None
 		vision_api_key: DF.Password | None

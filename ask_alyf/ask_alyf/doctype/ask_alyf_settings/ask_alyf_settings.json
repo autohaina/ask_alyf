@@ -25,6 +25,8 @@
   "panel_disclaimer",
   "show_file_upload_button",
   "show_voice_input_button",
+  "suggested_prompts_section",
+  "suggested_prompts",
   "chat_provider_tab",
   "llm_provider",
   "base_url",
@@ -165,6 +167,18 @@
    "fieldname": "show_voice_input_button",
    "fieldtype": "Check",
    "label": "显示语音按钮"
+  },
+  {
+   "fieldname": "suggested_prompts_section",
+   "fieldtype": "Section Break",
+   "label": "快捷提示"
+  },
+  {
+   "description": "每行绑定一个角色。按表格顺序展示；未配置时使用默认角色快捷提示。",
+   "fieldname": "suggested_prompts",
+   "fieldtype": "Table",
+   "label": "快捷提示",
+   "options": "Ask ALYF Suggested Prompt"
   },
   {
    "fieldname": "chat_provider_tab",
