@@ -12,6 +12,7 @@ from frappe.utils.data import cint
 
 from ask_alyf.ask_alyf import field_agent
 from ask_alyf.ask_alyf.agent import run_message
+from ask_alyf.ask_alyf.history import history_item_to_native_message
 from ask_alyf.ask_alyf.tools import (
 	OPERATION_KIND_BACKEND,
 	OPERATION_KIND_FRONTEND,
@@ -41,15 +42,18 @@ def _get_setting_text(settings: Any, fieldname: str, default: str) -> str:
 
 
 def _get_setting_check(settings: Any, fieldname: str, default: bool) -> bool:
+	doctype = getattr(settings, "doctype", "Ask ALYF Settings")
+	try:
+		stored_value = frappe.db.get_value("Singles", {"doctype": doctype, "field": fieldname}, "value")
+		if stored_value not in (None, ""):
+			return bool(cint(stored_value))
+		return default
+	except Exception:
+		pass
+
 	value = getattr(settings, fieldname, None)
 	if value in (None, ""):
 		return default
-	try:
-		doctype = getattr(settings, "doctype", "Ask ALYF Settings")
-		if not frappe.db.exists("Singles", {"doctype": doctype, "field": fieldname}):
-			return default
-	except Exception:
-		pass
 	return bool(cint(value))
 
 
@@ -206,6 +210,37 @@ def make_message(role: str, content: str, **metadata) -> dict:
 	}
 
 
+def normalize_file_attachments(files: str | list | None) -> list[dict[str, str]]:
+	file_items = frappe.parse_json(files) if isinstance(files, str) else (files or [])
+	if not isinstance(file_items, list):
+		frappe.throw(_("Files must be a list."))
+
+	normalized_files = []
+	for file_data in file_items:
+		file_id = ""
+		if isinstance(file_data, dict):
+			file_id = (file_data.get("name") or file_data.get("file_id") or "").strip()
+		elif isinstance(file_data, str):
+			file_id = file_data.strip()
+
+		if not file_id:
+			frappe.throw(_("No valid file provided."))
+		if not frappe.db.exists("File", file_id):
+			frappe.throw(_("File '{0}' was not found.").format(file_id))
+
+		file_doc = frappe.get_doc("File", file_id)
+		file_doc.check_permission("read")
+		normalized_files.append(
+			{
+				"name": file_doc.name,
+				"file_name": file_doc.file_name,
+				"file_url": file_doc.file_url,
+			}
+		)
+
+	return normalized_files
+
+
 def load_pending_operations(json_str: str) -> list[dict[str, Any]]:
 	return loads(json_str, []) or []
 
@@ -340,6 +375,17 @@ def save_messages(conversation, messages: list[dict]):
 	conversation.messages_json = dumps(messages)
 	conversation.last_message_at = now_datetime()
 	conversation.save()
+
+
+def build_current_message_content_for_agent(message: str, current_message: dict[str, Any] | None) -> str:
+	if not current_message:
+		return message
+
+	native_message = history_item_to_native_message({**current_message, "content": message})
+	content = getattr(native_message, "content", None) if native_message else None
+	if isinstance(content, str) and content.strip():
+		return content
+	return message
 
 
 def _build_confirm_ack_content(
@@ -527,16 +573,18 @@ def send_message(
 	mode: str = MODE_ASK,
 	conversation: str | None = None,
 	context: str | dict | None = None,
+	files: str | list | None = None,
 ) -> dict:
 	if not can_access_ask_alyf():
 		frappe.throw(_("You do not have access to Ask ALYF."))
 
 	normalized_mode = normalize_mode(mode)
 	context_data = frappe.parse_json(context) if isinstance(context, str) else (context or {})
+	file_entries = normalize_file_attachments(files)
 	doc = get_or_create_conversation(conversation_name=conversation)
 
 	messages = get_messages(doc)
-	user_message = make_message("user", message, mode=normalized_mode)
+	user_message = make_message("user", message, mode=normalized_mode, files=file_entries)
 	messages.append(user_message)
 
 	if doc.title == _("New Conversation"):
@@ -574,6 +622,8 @@ def process_message_job(
 	doc = frappe.get_doc("Ask ALYF Conversation", conversation_name)
 	messages = get_messages(doc)
 	history = messages[:-1] if messages and messages[-1].get("id") == user_message_id else messages
+	current_message = messages[-1] if messages and messages[-1].get("id") == user_message_id else None
+	agent_message = build_current_message_content_for_agent(message, current_message)
 
 	frappe.publish_realtime(
 		"ask_alyf_response_start",
@@ -584,7 +634,7 @@ def process_message_job(
 	try:
 		result = run_message(
 			conversation_name=conversation_name,
-			message=message,
+			message=agent_message,
 			mode=mode,
 			request_context=context_data,
 			conversation_history=history,
@@ -1041,26 +1091,7 @@ def attach_file(conversation: str, file: str | dict) -> dict:
 	doc = frappe.get_doc("Ask ALYF Conversation", conversation)
 	doc.check_permission("write")
 
-	file_data = frappe.parse_json(file) if isinstance(file, str) else file
-	file_id = ""
-	if isinstance(file_data, dict):
-		file_id = (file_data.get("name") or file_data.get("file_id") or "").strip()
-	elif isinstance(file_data, str):
-		file_id = file_data.strip()
-
-	if not file_id:
-		frappe.throw(_("No valid file provided."))
-	if not frappe.db.exists("File", file_id):
-		frappe.throw(_("File '{0}' was not found.").format(file_id))
-
-	file_doc = frappe.get_doc("File", file_id)
-	file_doc.check_permission("read")
-
-	file_entry = {
-		"name": file_doc.name,
-		"file_name": file_doc.file_name,
-		"file_url": file_doc.file_url,
-	}
+	file_entry = normalize_file_attachments([file])[0]
 
 	content = f"User attached a file: {file_entry['file_name']} (ID: {file_entry['name']})"
 	messages = get_messages(doc)

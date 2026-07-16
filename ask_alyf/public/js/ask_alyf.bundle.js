@@ -147,6 +147,7 @@ import "./field_agent";
 				conversations: [],
 				activeTab: "chat",
 				messages: [],
+				pendingAttachments: [],
 				pendingOperations: [],
 				status: "",
 				mode: "Ask",
@@ -252,18 +253,69 @@ import "./field_agent";
 			}
 		}
 
+		isImageFile(fileEntry) {
+			const fileName = (fileEntry?.file_name || fileEntry?.name || "").toString().toLowerCase();
+			const fileUrl = (fileEntry?.file_url || "").toString().toLowerCase();
+			return [fileName, fileUrl].some((value) =>
+				/\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/.test(value),
+			);
+		}
+
+		renderAttachmentCard(fileEntry, options = {}) {
+			const label = (fileEntry?.file_name || fileEntry?.name || "").toString().trim();
+			if (!label) {
+				return "";
+			}
+
+			const href = this.getSafeFileHref(fileEntry?.file_url);
+			const escapedLabel = this.escapeHtml(label);
+			const removable = Boolean(options.removable);
+			const index = Number.isInteger(options.index) ? options.index : -1;
+			const removeButton = removable
+				? `<button class="ask_alyf-attachment-remove" type="button" data-attachment-index="${index}" title="${this.escapeHtml(
+						__("Remove"),
+					)}" aria-label="${this.escapeHtml(__("Remove"))}">&times;</button>`
+				: "";
+
+			const content = this.isImageFile(fileEntry) && href
+				? `<img class="ask_alyf-attachment-thumb" src="${this.escapeHtml(href)}" alt="${escapedLabel}">`
+				: `<span class="ask_alyf-attachment-file-icon"><i class="fa fa-paperclip" aria-hidden="true"></i></span>`;
+			const labelHtml = `<span class="ask_alyf-attachment-name" title="${escapedLabel}">${escapedLabel}</span>`;
+			const body = `${content}${labelHtml}${removeButton}`;
+
+			if (href && !removable) {
+				return `<a class="ask_alyf-attachment-card" href="${this.escapeHtml(
+					href,
+				)}" target="_blank" rel="noopener noreferrer">${body}</a>`;
+			}
+			return `<div class="ask_alyf-attachment-card">${body}</div>`;
+		}
+
+		renderAttachmentList(files, options = {}) {
+			if (!Array.isArray(files) || !files.length) {
+				return "";
+			}
+			const cards = files
+				.map((fileEntry, index) => this.renderAttachmentCard(fileEntry, { ...options, index }))
+				.filter(Boolean)
+				.join("");
+			if (!cards) {
+				return "";
+			}
+			return `<div class="ask_alyf-attachment-list">${cards}</div>`;
+		}
+
 		getMessageHtml(message) {
+			const files = Array.isArray(message.metadata?.files) ? message.metadata.files : [];
 			if (message.role === "assistant") {
 				return frappe.markdown(message.content || "");
 			}
-			if (message.role === "system" && Array.isArray(message.metadata?.files)) {
-				const names = message.metadata.files
-					.map((f) => this.renderFileLink(f))
-					.filter(Boolean)
-					.join(", ");
-				return `<i class="fa fa-paperclip" aria-hidden="true"></i> ${names}`;
+			if (message.role === "system" && files.length) {
+				return this.renderAttachmentList(files);
 			}
-			return this.escapeHtml(message.content || "").replace(/\n/g, "<br>");
+			const content = this.escapeHtml(message.content || "").replace(/\n/g, "<br>");
+			const attachments = this.renderAttachmentList(files);
+			return attachments ? `${content}${attachments}` : content;
 		}
 
 		renderFileLink(fileEntry) {
@@ -593,6 +645,7 @@ import "./field_agent";
 					<div class="ask_alyf-chat-view">
 						<div class="ask_alyf-messages"></div>
 						<div class="ask_alyf-composer">
+							<div class="ask_alyf-pending-attachments ask_alyf-hidden" aria-live="polite"></div>
 							<div class="ask_alyf-input-shell">
 								<textarea class="ask_alyf-input" rows="3" placeholder="请输入您的业务问题..."></textarea>
 								<div class="ask_alyf-mode-dropdown">
@@ -635,6 +688,7 @@ import "./field_agent";
 			this.messagesEl = root.querySelector(".ask_alyf-messages");
 			this.warningEl = root.querySelector(".ask_alyf-config-warning");
 			this.inputEl = root.querySelector(".ask_alyf-input");
+			this.pendingAttachmentsEl = root.querySelector(".ask_alyf-pending-attachments");
 			this.bubbleEl = root.querySelector(".ask_alyf-bubble");
 			this.bubbleLogoEl = root.querySelector(".ask_alyf-bubble-logo");
 			this.titleEl = root.querySelector(".ask_alyf-title");
@@ -689,7 +743,11 @@ import "./field_agent";
 				}
 			});
 			this.inputEl.addEventListener("input", () => this.autoResizeInput());
+			this.pendingAttachmentsEl?.addEventListener("click", (event) =>
+				this.onPendingAttachmentClick(event),
+			);
 			this.updateVoiceInputHint();
+			this.renderPendingAttachments();
 			this.autoResizeInput();
 			this.setActiveTab(this.state.activeTab);
 		}
@@ -795,6 +853,35 @@ import "./field_agent";
 			this.renderHistoryList();
 			this.renderMessages();
 			this.restoreProcessingState();
+		}
+
+		renderPendingAttachments() {
+			if (!this.pendingAttachmentsEl) {
+				return;
+			}
+			const attachments = this.state.pendingAttachments || [];
+			if (!attachments.length) {
+				this.pendingAttachmentsEl.innerHTML = "";
+				this.pendingAttachmentsEl.classList.add("ask_alyf-hidden");
+				return;
+			}
+			this.pendingAttachmentsEl.innerHTML = this.renderAttachmentList(attachments, {
+				removable: true,
+			});
+			this.pendingAttachmentsEl.classList.remove("ask_alyf-hidden");
+		}
+
+		onPendingAttachmentClick(event) {
+			const removeButton = event.target.closest(".ask_alyf-attachment-remove");
+			if (!removeButton) {
+				return;
+			}
+			const index = Number.parseInt(removeButton.dataset.attachmentIndex, 10);
+			if (!Number.isInteger(index) || index < 0) {
+				return;
+			}
+			this.state.pendingAttachments.splice(index, 1);
+			this.renderPendingAttachments();
 		}
 
 		isAwaitingResponse() {
@@ -989,23 +1076,15 @@ import "./field_agent";
 			if (!fileDoc?.file_name) {
 				return;
 			}
-			try {
-				const response = await frappe.call({
-					method: "ask_alyf.api.attach_file",
-					type: "POST",
-					args: {
-						conversation: this.state.conversation.name,
-						file: {
-							name: fileDoc.name,
-							file_name: fileDoc.file_name,
-						},
-					},
-				});
-				if (response.message?.conversation) {
-					await this.applyConversation(response.message.conversation);
-				}
-			} catch (error) {
-				frappe.msgprint(error.message || __("Failed to attach file to conversation."));
+			const attachment = {
+				name: fileDoc.name,
+				file_name: fileDoc.file_name,
+				file_url: fileDoc.file_url,
+			};
+			const exists = this.state.pendingAttachments.some((file) => file.name === attachment.name);
+			if (!exists) {
+				this.state.pendingAttachments.push(attachment);
+				this.renderPendingAttachments();
 			}
 		}
 
@@ -1619,9 +1698,11 @@ import "./field_agent";
 
 		async sendMessage() {
 			const text = this.inputEl.value.trim();
-			if (!text || this.state.loading) {
+			const attachments = [...(this.state.pendingAttachments || [])];
+			if ((!text && !attachments.length) || this.state.loading) {
 				return;
 			}
+			const messageText = text || __("请查看附件。");
 
 			this.setActiveTab("chat");
 			this.toggle(true);
@@ -1631,10 +1712,15 @@ import "./field_agent";
 			const optimisticMessage = {
 				id: `local-${Date.now()}`,
 				role: "user",
-				content: text,
+				content: messageText,
+				metadata: {
+					files: attachments,
+				},
 			};
 			this.state.messages.push(optimisticMessage);
+			this.state.pendingAttachments = [];
 			this.state.pendingOperations = [];
+			this.renderPendingAttachments();
 			this.renderMessages();
 			this.inputEl.value = "";
 			this.autoResizeInput();
@@ -1644,10 +1730,11 @@ import "./field_agent";
 					method: "ask_alyf.api.send_message",
 					type: "POST",
 					args: {
-						message: text,
+						message: messageText,
 						mode: this.state.mode,
 						conversation: this.state.conversation?.name,
 						context: this.getCurrentContext(),
+						files: attachments.map((file) => ({ name: file.name })),
 					},
 				});
 				if (response.message.conversation) {
@@ -1659,6 +1746,8 @@ import "./field_agent";
 				this.refreshConversationList();
 				this.setStatus(__("Waiting for response..."));
 			} catch (error) {
+				this.state.pendingAttachments = attachments;
+				this.renderPendingAttachments();
 				this.setLoading(false);
 				this.setStatus("");
 				frappe.msgprint(error.message || __("Failed to send message."));

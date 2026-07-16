@@ -35,14 +35,14 @@
    "icon": "list",
    "indent": 0,
    "keep_closed": 0,
-   "label": "AI\u52a9\u624b",
+   "label": "AI\u52a9\u624b\u6280\u80fd",
    "link_to": "Ask ALYF Skill",
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Link"
   }
  ],
- "modified": "2026-07-16 19:21:16.480182",
+ "modified": "2026-07-16 21:57:18.884450",
  "modified_by": "irils@qq.com",
  "module": "Ask ALYF",
  "name": "Ask ALYF",
