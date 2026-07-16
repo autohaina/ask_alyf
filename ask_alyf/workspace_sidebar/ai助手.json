@@ -1,6 +1,6 @@
 {
  "app": "ask_alyf",
- "creation": "2026-03-16 02:18:16.616588",
+ "creation": "2026-07-16 22:20:00.000000",
  "docstatus": 0,
  "doctype": "Workspace Sidebar",
  "idx": 0,
@@ -42,11 +42,11 @@
    "type": "Link"
   }
  ],
- "modified": "2026-07-16 19:21:16.480182",
- "modified_by": "irils@qq.com",
+ "modified": "2026-07-16 22:20:00.000000",
+ "modified_by": "Administrator",
  "module": "Ask ALYF",
- "name": "Ask ALYF",
+ "name": "AI\u52a9\u624b",
  "owner": "Administrator",
  "standard": 1,
- "title": "Ask ALYF"
+ "title": "AI\u52a9\u624b"
 }
