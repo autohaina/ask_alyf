@@ -235,6 +235,8 @@ def normalize_file_attachments(files: str | list | None) -> list[dict[str, str]]
 				"name": file_doc.name,
 				"file_name": file_doc.file_name,
 				"file_url": file_doc.file_url,
+				"file_type": file_doc.file_type,
+				"file_size": file_doc.file_size,
 			}
 		)
 

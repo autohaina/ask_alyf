@@ -151,6 +151,8 @@ class UnitTestAskALYFApi(UnitTestCase):
 			name="FILE-1",
 			file_name="invoice.png",
 			file_url="/files/invoice.png",
+			file_type="PNG",
+			file_size=1536,
 			check_permission=lambda permission: None,
 		)
 
@@ -167,6 +169,8 @@ class UnitTestAskALYFApi(UnitTestCase):
 					"name": "FILE-1",
 					"file_name": "invoice.png",
 					"file_url": "/files/invoice.png",
+					"file_type": "PNG",
+					"file_size": 1536,
 				}
 			],
 		)

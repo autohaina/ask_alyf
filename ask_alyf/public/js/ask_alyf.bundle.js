@@ -9,6 +9,9 @@ import "./field_agent";
 	// Must exceed frappe-charts getExtraHeight (~130) plus drawable area; see tools.MIN_FRAPPE_CHART_HEIGHT.
 	const ASK_ALYF_FRAPPE_CHART_MIN_HEIGHT = 240;
 	const ASK_ALYF_FRAPPE_CHART_MAX_HEIGHT = 720;
+	const ASK_ALYF_FANCYBOX_VERSION = "6.1.14";
+	const ASK_ALYF_FANCYBOX_JS = `https://cdn.jsdelivr.net/npm/@fancyapps/ui@${ASK_ALYF_FANCYBOX_VERSION}/dist/fancybox/fancybox.umd.js`;
+	const ASK_ALYF_FANCYBOX_CSS = `https://cdn.jsdelivr.net/npm/@fancyapps/ui@${ASK_ALYF_FANCYBOX_VERSION}/dist/fancybox/fancybox.css`;
 
 	/**
 	 * Frappe Charts divides by labels.length, Y interval range, and (for pie) grand total;
@@ -167,6 +170,7 @@ import "./field_agent";
 			this.statusBodyEl = null;
 			this.pendingOperationsEl = null;
 			this.suggestedPromptsEl = null;
+			this.fancyboxPromise = null;
 		}
 
 		disposeActiveFrappeCharts(messageKey = null) {
@@ -261,6 +265,67 @@ import "./field_agent";
 			);
 		}
 
+		getAttachmentExtension(fileEntry) {
+			const label = (fileEntry?.file_name || fileEntry?.name || "").toString();
+			const match = label.match(/\.([^.?#/]+)(?:[?#].*)?$/);
+			return match ? match[1].toUpperCase() : "";
+		}
+
+		getAttachmentType(fileEntry) {
+			if (this.isImageFile(fileEntry)) {
+				return "Image";
+			}
+			const fileType = (fileEntry?.file_type || "").toString().trim();
+			if (fileType) {
+				return fileType.toUpperCase();
+			}
+			return this.getAttachmentExtension(fileEntry) || "File";
+		}
+
+		formatAttachmentSize(fileEntry) {
+			const size = Number(fileEntry?.file_size);
+			if (!Number.isFinite(size) || size <= 0) {
+				return "";
+			}
+			const units = ["B", "KB", "MB", "GB"];
+			let value = size;
+			let unitIndex = 0;
+			while (value >= 1024 && unitIndex < units.length - 1) {
+				value /= 1024;
+				unitIndex += 1;
+			}
+			const decimals = value >= 10 || unitIndex === 0 ? 0 : 1;
+			return `${value.toFixed(decimals)}${units[unitIndex]}`;
+		}
+
+		getAttachmentPreviewType(fileEntry) {
+			if (this.isImageFile(fileEntry)) {
+				return "image";
+			}
+			const type = this.getAttachmentType(fileEntry).toLowerCase();
+			if (type === "pdf") {
+				return "pdf";
+			}
+			return "iframe";
+		}
+
+		getAttachmentIcon(fileEntry) {
+			const type = this.getAttachmentType(fileEntry).toLowerCase();
+			if (type === "pdf") {
+				return "fa-file-pdf-o";
+			}
+			if (["csv", "xls", "xlsx"].includes(type)) {
+				return "fa-file-excel-o";
+			}
+			if (["txt", "text", "md", "markdown", "json", "xml"].includes(type)) {
+				return "fa-file-text-o";
+			}
+			if (this.isImageFile(fileEntry)) {
+				return "fa-file-image-o";
+			}
+			return "fa-paperclip";
+		}
+
 		renderAttachmentCard(fileEntry, options = {}) {
 			const label = (fileEntry?.file_name || fileEntry?.name || "").toString().trim();
 			if (!label) {
@@ -269,6 +334,9 @@ import "./field_agent";
 
 			const href = this.getSafeFileHref(fileEntry?.file_url);
 			const escapedLabel = this.escapeHtml(label);
+			const typeLabel = this.escapeHtml(this.getAttachmentType(fileEntry));
+			const sizeLabel = this.escapeHtml(this.formatAttachmentSize(fileEntry));
+			const metaLabel = [typeLabel, sizeLabel].filter(Boolean).join(" · ");
 			const removable = Boolean(options.removable);
 			const index = Number.isInteger(options.index) ? options.index : -1;
 			const removeButton = removable
@@ -277,18 +345,32 @@ import "./field_agent";
 					)}" aria-label="${this.escapeHtml(__("Remove"))}">&times;</button>`
 				: "";
 
-			const content = this.isImageFile(fileEntry) && href
+			const preview = this.isImageFile(fileEntry) && href
 				? `<img class="ask_alyf-attachment-thumb" src="${this.escapeHtml(href)}" alt="${escapedLabel}">`
-				: `<span class="ask_alyf-attachment-file-icon"><i class="fa fa-paperclip" aria-hidden="true"></i></span>`;
-			const labelHtml = `<span class="ask_alyf-attachment-name" title="${escapedLabel}">${escapedLabel}</span>`;
-			const body = `${content}${labelHtml}${removeButton}`;
+				: `<span class="ask_alyf-attachment-file-icon"><i class="fa ${this.getAttachmentIcon(
+						fileEntry,
+					)}" aria-hidden="true"></i></span>`;
+			const detail = `<span class="ask_alyf-attachment-detail"><span class="ask_alyf-attachment-name" title="${escapedLabel}">${escapedLabel}</span><span class="ask_alyf-attachment-meta">${metaLabel}</span></span>`;
+			const body = `<span class="ask_alyf-attachment-preview">${preview}</span>${detail}${removeButton}`;
+			const cardClasses = [
+				"ask_alyf-attachment-card",
+				href ? "ask_alyf-attachment-trigger" : "",
+				removable ? "ask_alyf-attachment-removable" : "",
+			]
+				.filter(Boolean)
+				.join(" ");
+			const fancyboxAttrs = href
+				? ` data-fancybox="ask_alyf-attachments" data-src="${this.escapeHtml(
+						href,
+					)}" data-type="${this.escapeHtml(
+						this.getAttachmentPreviewType(fileEntry),
+					)}" data-caption="${escapedLabel}"`
+				: "";
 
 			if (href && !removable) {
-				return `<a class="ask_alyf-attachment-card" href="${this.escapeHtml(
-					href,
-				)}" target="_blank" rel="noopener noreferrer">${body}</a>`;
+				return `<a class="${cardClasses}" href="${this.escapeHtml(href)}"${fancyboxAttrs}>${body}</a>`;
 			}
-			return `<div class="ask_alyf-attachment-card">${body}</div>`;
+			return `<div class="${cardClasses}"${fancyboxAttrs}>${body}</div>`;
 		}
 
 		renderAttachmentList(files, options = {}) {
@@ -594,6 +676,7 @@ import "./field_agent";
 
 			this.initialized = true;
 			this.make();
+			this.setupFancybox();
 			this.bindRealtime();
 			this.bindRouteChange();
 			this.loadBootstrap();
@@ -731,6 +814,7 @@ import "./field_agent";
 				.addEventListener("click", () => this.startNewConversation());
 			this.attachEl.addEventListener("click", () => this.openFileUploader());
 			this.micEl.addEventListener("click", () => this.startVoiceInput());
+			root.addEventListener("click", (event) => this.onAttachmentPreviewClick(event));
 			this.resizeHandleEl.addEventListener("pointerdown", (event) => this.startPanelResize(event));
 			this.inputEl.addEventListener("keydown", (event) => {
 				if (event.key === "Enter" && !event.shiftKey) {
@@ -750,6 +834,99 @@ import "./field_agent";
 			this.renderPendingAttachments();
 			this.autoResizeInput();
 			this.setActiveTab(this.state.activeTab);
+		}
+
+		setupFancybox() {
+			this.ensureFancybox().catch(() => {});
+		}
+
+		ensureFancybox() {
+			if (window.Fancybox?.bind) {
+				this.bindFancybox();
+				return Promise.resolve(window.Fancybox);
+			}
+			if (this.fancyboxPromise) {
+				return this.fancyboxPromise;
+			}
+
+			this.fancyboxPromise = new Promise((resolve, reject) => {
+				this.loadExternalStylesheet(ASK_ALYF_FANCYBOX_CSS);
+				const script = this.loadExternalScript(ASK_ALYF_FANCYBOX_JS);
+				script.onload = () => {
+					if (!window.Fancybox?.bind) {
+						reject(new Error("Fancybox did not initialize."));
+						return;
+					}
+					this.bindFancybox();
+					resolve(window.Fancybox);
+				};
+				script.onerror = () => reject(new Error("Fancybox failed to load."));
+			});
+			return this.fancyboxPromise;
+		}
+
+		loadExternalStylesheet(href) {
+			if (document.querySelector(`link[href="${href}"]`)) {
+				return;
+			}
+			const link = document.createElement("link");
+			link.rel = "stylesheet";
+			link.href = href;
+			document.head.appendChild(link);
+		}
+
+		loadExternalScript(src) {
+			const existing = document.querySelector(`script[src="${src}"]`);
+			if (existing) {
+				return existing;
+			}
+			const script = document.createElement("script");
+			script.src = src;
+			script.async = true;
+			document.head.appendChild(script);
+			return script;
+		}
+
+		bindFancybox() {
+			if (!window.Fancybox?.bind || this.fancyboxBound) {
+				return;
+			}
+			window.Fancybox.bind("[data-fancybox='ask_alyf-attachments']", {
+				groupAll: false,
+				placeFocusBack: false,
+			});
+			this.fancyboxBound = true;
+		}
+
+		async onAttachmentPreviewClick(event) {
+			if (event.target.closest(".ask_alyf-attachment-remove")) {
+				return;
+			}
+			const trigger = event.target.closest(".ask_alyf-attachment-trigger");
+			if (!trigger || window.Fancybox?.getInstance?.()) {
+				return;
+			}
+			if (window.Fancybox?.bind) {
+				return;
+			}
+
+			const src = trigger.dataset.src || trigger.getAttribute("href");
+			if (!src) {
+				return;
+			}
+			event.preventDefault();
+			try {
+				const Fancybox = await this.ensureFancybox();
+				Fancybox.show([
+					{
+						src,
+						type: trigger.dataset.type || "image",
+						caption: trigger.dataset.caption || "",
+					},
+				]);
+			} catch {
+				window.open(src, "_blank", "noopener,noreferrer");
+			}
 		}
 
 		bindRealtime() {
@@ -876,6 +1053,8 @@ import "./field_agent";
 			if (!removeButton) {
 				return;
 			}
+			event.preventDefault();
+			event.stopPropagation();
 			const index = Number.parseInt(removeButton.dataset.attachmentIndex, 10);
 			if (!Number.isInteger(index) || index < 0) {
 				return;
@@ -1080,6 +1259,8 @@ import "./field_agent";
 				name: fileDoc.name,
 				file_name: fileDoc.file_name,
 				file_url: fileDoc.file_url,
+				file_type: fileDoc.file_type,
+				file_size: fileDoc.file_size,
 			};
 			const exists = this.state.pendingAttachments.some((file) => file.name === attachment.name);
 			if (!exists) {

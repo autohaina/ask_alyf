@@ -807,55 +807,86 @@
 
 .ask_alyf-pending-attachments {
 	margin-bottom: 0.55rem;
+	overflow: hidden;
 }
 
 .ask_alyf-attachment-list {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 0.45rem;
+	flex-wrap: nowrap;
+	gap: 0.55rem;
 	align-items: center;
+	max-width: 100%;
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: 0.05rem 0 0.25rem;
+	scrollbar-width: thin;
+	-webkit-overflow-scrolling: touch;
 }
 
 .ask_alyf-attachment-card {
 	position: relative;
 	display: inline-flex;
 	align-items: center;
-	gap: 0.4rem;
-	max-width: min(13rem, 100%);
-	min-height: 2.4rem;
-	padding: 0.35rem 0.55rem;
+	gap: 0.65rem;
+	width: min(16rem, 72vw);
+	height: 4.2rem;
+	padding: 0.45rem 0.75rem 0.45rem 0.45rem;
 	border: 1px solid var(--border-color);
 	border-radius: var(--border-radius);
 	background: var(--control-bg);
 	color: var(--text-color);
 	text-decoration: none;
 	overflow: hidden;
+	flex: 0 0 auto;
+	cursor: pointer;
 }
 
 .ask_alyf-attachment-card:hover {
 	text-decoration: none;
 	border-color: color-mix(in srgb, var(--primary), var(--border-color) 55%);
+	background: var(--fg-color);
+	color: var(--text-color);
 }
 
-.ask_alyf-attachment-thumb {
-	width: 3.1rem;
-	height: 3.1rem;
-	object-fit: cover;
-	border-radius: calc(var(--border-radius) - 2px);
-	background: var(--bg-light-gray);
-	flex: 0 0 auto;
+.ask_alyf-attachment-removable {
+	padding-right: 2.15rem;
 }
 
-.ask_alyf-attachment-file-icon {
-	width: 1.65rem;
-	height: 1.65rem;
+.ask_alyf-attachment-preview {
+	width: 2.85rem;
+	height: 2.85rem;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 999px;
+	flex: 0 0 auto;
+}
+
+.ask_alyf-attachment-thumb {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: calc(var(--border-radius) - 2px);
+	background: var(--bg-light-gray);
+}
+
+.ask_alyf-attachment-file-icon {
+	width: 2.4rem;
+	height: 2.4rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: calc(var(--border-radius) - 2px);
 	background: var(--bg-light-gray);
 	color: var(--text-muted);
-	flex: 0 0 auto;
+	font-size: 1.1rem;
+}
+
+.ask_alyf-attachment-detail {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.18rem;
+	flex: 1 1 auto;
 }
 
 .ask_alyf-attachment-name {
@@ -863,23 +894,36 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-size: 0.82rem;
+	font-size: 0.88rem;
 	line-height: 1.25;
+	font-weight: 500;
+}
+
+.ask_alyf-attachment-meta {
+	min-height: 1rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.73rem;
+	line-height: 1.25;
+	color: var(--text-muted);
 }
 
 .ask_alyf-attachment-remove {
 	width: 1.35rem;
 	height: 1.35rem;
+	position: absolute;
+	top: 0.35rem;
+	right: 0.35rem;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	border: 0;
 	border-radius: 999px;
-	background: var(--fg-color);
+	background: var(--control-bg);
 	color: var(--text-muted);
 	line-height: 1;
 	padding: 0;
-	flex: 0 0 auto;
 }
 
 .ask_alyf-attachment-remove:hover {
@@ -889,6 +933,7 @@
 
 .ask_alyf-message-body .ask_alyf-attachment-list {
 	margin-top: 0.55rem;
+	max-width: min(42rem, 100%);
 }
 
 .ask_alyf-message-body > .ask_alyf-attachment-list:first-child {
