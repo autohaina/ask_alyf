@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 from uuid import uuid4
 
@@ -242,6 +243,18 @@ def make_message(role: str, content: str, **metadata) -> dict:
 	}
 
 
+def localize_agent_error_message(message: str) -> str:
+	message = (message or "").strip()
+	if not message:
+		return _("I hit an error while processing that request. Please try again.")
+
+	field_not_permitted = re.match(r"^Field not permitted in query:\s*(.+)$", message)
+	if field_not_permitted:
+		return _("查询字段不允许使用：{0}").format(field_not_permitted.group(1).strip())
+
+	return message
+
+
 def normalize_file_attachments(files: str | list | None) -> list[dict[str, str]]:
 	file_items = frappe.parse_json(files) if isinstance(files, str) else (files or [])
 	if not isinstance(file_items, list):
@@ -428,13 +441,13 @@ def _build_confirm_ack_content(
 	execution_error: str | None,
 ) -> str:
 	if execution_error:
-		return _("Could not confirm operation: {0}").format(execution_error)
+		return _("无法确认操作：{0}").format(execution_error)
 
-	content = _("Confirmed operation: {0}").format(
+	content = _("已确认操作：{0}").format(
 		pending_operation.get("summary") or pending_operation.get("tool")
 	)
 	if action_result.get("doctype") and action_result.get("name"):
-		content += "\n\n" + _("Document: {0} {1}").format(
+		content += "\n\n" + _("单据：{0} {1}").format(
 			_(action_result["doctype"]),
 			action_result["name"],
 		)
@@ -706,7 +719,7 @@ def process_message_job(
 	except Exception as error:
 		frappe.log_error("Ask ALYF Agent Error")
 		frappe.clear_messages()
-		response = str(error).strip() or _("I hit an error while processing that request. Please try again.")
+		response = localize_agent_error_message(str(error))
 		pending_operations = []
 		document_extractions = None
 		attached_files = None
@@ -794,7 +807,7 @@ def confirm_pending_operation(conversation: str, call_id: str = "", mode: str = 
 		except Exception as error:
 			frappe.log_error("Ask ALYF Confirm Action Error")
 			frappe.clear_messages()
-			execution_error = str(error)
+			execution_error = localize_agent_error_message(str(error))
 			result = None
 
 		operation_payload = pending_operation.get("payload") if isinstance(pending_operation, dict) else {}
@@ -820,7 +833,7 @@ def confirm_pending_operation(conversation: str, call_id: str = "", mode: str = 
 			messages.append(make_message("assistant", content, mode=normalized_mode, **ack_meta))
 			save_messages(doc, messages)
 		else:
-			publish_status_update(doc.name, doc.owner, _("Generating response..."))
+			publish_status_update(doc.name, doc.owner, "正在生成回复...")
 			agent_result = continue_after_action(
 				doc,
 				normalized_mode,
@@ -887,7 +900,7 @@ def reject_pending_operation(conversation: str, call_id: str = "", mode: str = M
 			)
 			save_messages(doc, messages)
 		else:
-			publish_status_update(doc.name, doc.owner, _("Generating response..."))
+			publish_status_update(doc.name, doc.owner, "正在生成回复...")
 			agent_result = continue_after_action(
 				doc,
 				normalized_mode,
@@ -938,17 +951,17 @@ def _resolve_show_chart_frontend_action(
 			frappe.throw(validation_error)
 		target = find_assistant_message_for_pending_operation(messages, pending_operation)
 		if not target:
-			frappe.throw(_("Could not attach charts to the assistant message."))
+			frappe.throw(_("无法将图表附加到助手消息。"))
 		attach_frappe_charts_to_message(target, charts)
 		save_messages(doc, messages)
 		return {"conversation": conversation_payload(doc)}
 
 	if status_value == "rejected":
-		content = _("Cancelled showing chart: {0}.").format(pending_operation.get("summary") or _("chart"))
+		content = _("已取消显示图表：{0}。").format(pending_operation.get("summary") or _("图表"))
 	else:
-		content = _("Could not display chart.")
+		content = _("无法显示图表。")
 		if error:
-			content += " " + _("Reason: {0}").format(error)
+			content += " " + _("原因：{0}").format(error)
 
 	messages.append(
 		make_message(
@@ -1002,7 +1015,7 @@ def frontend_action_result(
 	elif isinstance(result, dict):
 		result_payload = result
 
-	publish_status_update(doc.name, doc.owner, _("Generating response..."))
+	publish_status_update(doc.name, doc.owner, "正在生成回复...")
 	try:
 		messages = get_messages(doc)
 		if (pending_operation.get("tool") or "").strip() == "show_chart":

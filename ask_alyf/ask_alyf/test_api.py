@@ -211,6 +211,12 @@ class UnitTestAskALYFApi(UnitTestCase):
 		self.assertTrue(payload["file_upload_enabled"])
 		self.assertTrue(payload["voice_input_enabled"])
 
+	def test_localize_agent_error_message_translates_field_not_permitted(self):
+		self.assertEqual(
+			api.localize_agent_error_message("Field not permitted in query: delivery_date"),
+			"查询字段不允许使用：delivery_date",
+		)
+
 	def test_list_conversations_excludes_empty_conversations(self):
 		with (
 			patch.object(api, "can_access_ask_alyf", return_value=True),

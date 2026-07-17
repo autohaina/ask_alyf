@@ -158,6 +158,17 @@ class UnitTestCodeTools(UnitTestCase):
 			with self.assertRaises(frappe.ValidationError):
 				toolset.read_skill("expense-guide")
 
+	def test_get_meta_emits_chinese_status_text(self):
+		statuses = []
+		runtime = self.make_runtime(mode="Ask")
+		runtime.emit_status = statuses.append
+		toolset = ask_alyfToolset(runtime)
+
+		with patch("ask_alyf.ask_alyf.toolset.tools.get_meta", return_value={}):
+			toolset.get_meta("Purchase Order")
+
+		self.assertEqual(statuses, ["正在加载元数据..."])
+
 	def test_write_skill_proposes_ask_alyf_skill_insert(self):
 		runtime = self.make_runtime(mode="Agent")
 		toolset = ask_alyfToolset(runtime)

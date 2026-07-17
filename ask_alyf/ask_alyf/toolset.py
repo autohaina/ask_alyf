@@ -171,7 +171,7 @@ class ask_alyfToolset:
 		Returns:
 			A list of matching documents.
 		"""
-		self.runtime.emit_status(_("Fetching list..."))
+		self.runtime.emit_status("正在获取列表...")
 		return tools.get_list(
 			doctype=doctype,
 			fields=fields,
@@ -195,7 +195,7 @@ class ask_alyfToolset:
 		Returns:
 			The number of matching documents.
 		"""
-		self.runtime.emit_status(_("Counting documents..."))
+		self.runtime.emit_status("正在统计单据...")
 		return tools.get_count(doctype=doctype, filters=filters)
 
 	def get(
@@ -214,7 +214,7 @@ class ask_alyfToolset:
 		Returns:
 			The matching document.
 		"""
-		self.runtime.emit_status(_("Fetching document..."))
+		self.runtime.emit_status("正在获取单据...")
 		return tools.get_document(doctype=doctype, name=name, filters=filters)
 
 	def get_value(
@@ -233,7 +233,7 @@ class ask_alyfToolset:
 		Returns:
 			The requested value or values.
 		"""
-		self.runtime.emit_status(_("Fetching value..."))
+		self.runtime.emit_status("正在获取字段值...")
 		return tools.get_value(doctype=doctype, fieldname=fieldname, filters=filters)
 
 	def get_single_value(self, doctype: str, field: str) -> Any:
@@ -246,7 +246,7 @@ class ask_alyfToolset:
 		Returns:
 			The field value.
 		"""
-		self.runtime.emit_status(_("Fetching single value..."))
+		self.runtime.emit_status("正在获取单例字段值...")
 		return tools.get_single_value(doctype=doctype, field=field)
 
 	def get_meta(self, doctype: str) -> dict[str, Any]:
@@ -258,7 +258,7 @@ class ask_alyfToolset:
 		Returns:
 			A metadata dictionary for the DocType.
 		"""
-		self.runtime.emit_status(_("Loading metadata..."))
+		self.runtime.emit_status("正在加载元数据...")
 		return tools.get_meta(doctype=doctype)
 
 	def has_permission(self, doctype: str, docname: str, perm_type: str = "read") -> dict[str, bool]:
@@ -272,7 +272,7 @@ class ask_alyfToolset:
 		Returns:
 			A dictionary containing the boolean permission result.
 		"""
-		self.runtime.emit_status(_("Checking permissions..."))
+		self.runtime.emit_status("正在检查权限...")
 		return tools.has_permission(doctype=doctype, docname=docname, perm_type=perm_type)
 
 	def get_doc_permissions(self, doctype: str, docname: str) -> dict[str, Any]:
@@ -285,7 +285,7 @@ class ask_alyfToolset:
 		Returns:
 			The evaluated permission dictionary.
 		"""
-		self.runtime.emit_status(_("Evaluating permissions..."))
+		self.runtime.emit_status("正在评估权限...")
 		return tools.get_doc_permissions(doctype=doctype, docname=docname)
 
 	def list_accessible_doctypes(self, permission_type: str = "read") -> list[str]:
@@ -297,7 +297,7 @@ class ask_alyfToolset:
 		Returns:
 			A list of DocType names.
 		"""
-		self.runtime.emit_status(_("Listing accessible DocTypes..."))
+		self.runtime.emit_status("正在列出可访问的单据类型...")
 		return tools.list_accessible_doctypes(permission_type=permission_type)
 
 	def list_accessible_reports(self) -> list[dict[str, Any]]:
@@ -306,7 +306,7 @@ class ask_alyfToolset:
 		Returns:
 			A list of report metadata dictionaries.
 		"""
-		self.runtime.emit_status(_("Listing accessible reports..."))
+		self.runtime.emit_status("正在列出可访问的报表...")
 		return tools.list_accessible_reports()
 
 	def translate_ui_labels(
@@ -326,7 +326,7 @@ class ask_alyfToolset:
 		Returns:
 			A dictionary with the resolved language and translated labels.
 		"""
-		self.runtime.emit_status(_("Translating UI labels..."))
+		self.runtime.emit_status("正在翻译界面标签...")
 		request_language = self.runtime.request_context.get("lang") or self.runtime.request_context.get(
 			"locale"
 		)
@@ -352,7 +352,7 @@ class ask_alyfToolset:
 		Returns:
 			The matching File ID.
 		"""
-		self.runtime.emit_status(_("Resolving file ID..."))
+		self.runtime.emit_status("正在解析文件 ID...")
 		return tools.get_file_id(
 			reference_doctype=reference_doctype,
 			reference_name=reference_name,
@@ -370,7 +370,7 @@ class ask_alyfToolset:
 		Returns:
 			The file metadata and content.
 		"""
-		self.runtime.emit_status(_("Reading file..."))
+		self.runtime.emit_status("正在读取文件...")
 		return tools.read_file_record(file_id=file_id)
 
 	def extract_document_data(self, file_id: str, extraction_prompt: str = "") -> dict[str, Any]:
@@ -391,7 +391,7 @@ class ask_alyfToolset:
 			A dictionary with the file ID, file name, number of pages processed,
 			and the extracted data as a JSON object.
 		"""
-		self.runtime.emit_status(_("Extracting document data..."))
+		self.runtime.emit_status("正在提取文档数据...")
 		import asyncio
 
 		result = asyncio.run(
@@ -428,7 +428,7 @@ class ask_alyfToolset:
 		Returns:
 			A dictionary with the generated file metadata (name, file_name, file_url).
 		"""
-		self.runtime.emit_status(_("Generating print..."))
+		self.runtime.emit_status("正在生成打印文件...")
 		file_entry = tools.get_print(
 			doctype=doctype,
 			name=name,
@@ -449,7 +449,7 @@ class ask_alyfToolset:
 		Returns:
 			The SQL result rows.
 		"""
-		self.runtime.emit_status(_("Running SQL query..."))
+		self.runtime.emit_status("正在运行 SQL 查询...")
 		return tools.run_read_only_sql(query=query)
 
 	def get_app_version(self, app_name: str) -> str:
@@ -461,7 +461,7 @@ class ask_alyfToolset:
 		Returns:
 			The app version string.
 		"""
-		self.runtime.emit_status(_("Reading app version..."))
+		self.runtime.emit_status("正在读取应用版本...")
 		return tools.get_app_version(app_name=app_name)
 
 	def read_github_releases(self, app_name: str, limit: int = 5) -> list[dict[str, Any]]:
@@ -474,7 +474,7 @@ class ask_alyfToolset:
 		Returns:
 			A list of release dictionaries.
 		"""
-		self.runtime.emit_status(_("Reading GitHub releases..."))
+		self.runtime.emit_status("正在读取 GitHub 发布记录...")
 		return tools.read_github_releases(app_name=app_name, limit=limit)
 
 	def read_documentation_page(self, app_name: str, relative_path: str = "") -> dict[str, Any]:
@@ -487,7 +487,7 @@ class ask_alyfToolset:
 		Returns:
 			A documentation payload containing the page content.
 		"""
-		self.runtime.emit_status(_("Reading documentation..."))
+		self.runtime.emit_status("正在读取文档...")
 		return tools.read_documentation_page(app_name=app_name, relative_path=relative_path)
 
 	def read_skill(self, name: str) -> dict[str, str]:
@@ -502,7 +502,7 @@ class ask_alyfToolset:
 		Returns:
 			A dictionary containing the skill name, title, and markdown description.
 		"""
-		self.runtime.emit_status(_("Reading skill..."))
+		self.runtime.emit_status("正在读取技能...")
 		skill_doc = get_accessible_skill_doc(name)
 		return {
 			"name": skill_doc.name,
@@ -547,8 +547,8 @@ class ask_alyfToolset:
 			"insert",
 			_("Create skill '{0}'").format(clean_title),
 			reason,
-			validation_error_status=_("Skill proposal needs correction."),
-			prepared_status=_("Prepared skill proposal."),
+			validation_error_status="技能提案需要修正。",
+			prepared_status="已准备技能提案。",
 			doctype="Ask ALYF Skill",
 			values={
 				"title": clean_title,
@@ -573,8 +573,8 @@ class ask_alyfToolset:
 			"insert",
 			_("Create {0}").format(_(doctype)),
 			reason,
-			validation_error_status=_("Create proposal needs correction."),
-			prepared_status=_("Prepared create proposal."),
+			validation_error_status="创建提案需要修正。",
+			prepared_status="已准备创建提案。",
 			doctype=doctype,
 			values=values,
 		)
@@ -597,8 +597,8 @@ class ask_alyfToolset:
 			"batch_insert",
 			_("Create {0} {1} records").format(record_count, _(doctype)),
 			reason,
-			validation_error_status=_("Batch create proposal needs correction."),
-			prepared_status=_("Prepared batch create proposal."),
+			validation_error_status="批量创建提案需要修正。",
+			prepared_status="已准备批量创建提案。",
 			doctype=doctype,
 			records=records,
 		)
@@ -626,8 +626,8 @@ class ask_alyfToolset:
 			"save",
 			_("Update {0} {1}").format(_(doctype), name),
 			reason,
-			validation_error_status=_("Update proposal needs correction."),
-			prepared_status=_("Prepared update proposal."),
+			validation_error_status="更新提案需要修正。",
+			prepared_status="已准备更新提案。",
 			doctype=doctype,
 			name=name,
 			values=values,
@@ -657,8 +657,8 @@ class ask_alyfToolset:
 			"set_value",
 			_("Set {0} on {1} {2}").format(fieldname, _(doctype), name),
 			reason,
-			validation_error_status=_("Set value proposal needs correction."),
-			prepared_status=_("Prepared set value proposal."),
+			validation_error_status="设置值提案需要修正。",
+			prepared_status="已准备设置值提案。",
 			doctype=doctype,
 			name=name,
 			fieldname=fieldname,
@@ -680,8 +680,8 @@ class ask_alyfToolset:
 			"submit",
 			_("Submit {0} {1}").format(_(doctype), name),
 			reason,
-			validation_error_status=_("Submit proposal needs correction."),
-			prepared_status=_("Prepared submit proposal."),
+			validation_error_status="提交提案需要修正。",
+			prepared_status="已准备提交提案。",
 			doctype=doctype,
 			name=name,
 		)
@@ -701,8 +701,8 @@ class ask_alyfToolset:
 			"cancel",
 			_("Cancel {0} {1}").format(_(doctype), name),
 			reason,
-			validation_error_status=_("Cancel proposal needs correction."),
-			prepared_status=_("Prepared cancel proposal."),
+			validation_error_status="取消提案需要修正。",
+			prepared_status="已准备取消提案。",
 			doctype=doctype,
 			name=name,
 		)
@@ -722,8 +722,8 @@ class ask_alyfToolset:
 			"amend",
 			_("Amend {0} {1}").format(_(doctype), name),
 			reason,
-			validation_error_status=_("Amend proposal needs correction."),
-			prepared_status=_("Prepared amend proposal."),
+			validation_error_status="修订提案需要修正。",
+			prepared_status="已准备修订提案。",
 			doctype=doctype,
 			name=name,
 		)
@@ -743,8 +743,8 @@ class ask_alyfToolset:
 			"delete",
 			_("Delete {0} {1}").format(_(doctype), name),
 			reason,
-			validation_error_status=_("Delete proposal needs correction."),
-			prepared_status=_("Prepared delete proposal."),
+			validation_error_status="删除提案需要修正。",
+			prepared_status="已准备删除提案。",
 			doctype=doctype,
 			name=name,
 		)
@@ -773,8 +773,8 @@ class ask_alyfToolset:
 			"rename_doc",
 			_("Rename {0} {1} to {2}").format(_(doctype), name, new_name),
 			reason,
-			validation_error_status=_("Rename proposal needs correction."),
-			prepared_status=_("Prepared rename proposal."),
+			validation_error_status="重命名提案需要修正。",
+			prepared_status="已准备重命名提案。",
 			doctype=doctype,
 			name=name,
 			new_name=new_name,
@@ -808,8 +808,8 @@ class ask_alyfToolset:
 				name,
 			),
 			reason,
-			validation_error_status=_("Attach file proposal needs correction."),
-			prepared_status=_("Prepared attach file proposal."),
+			validation_error_status="附件提案需要修正。",
+			prepared_status="已准备附件提案。",
 			doctype=doctype,
 			name=name,
 			file_id=file_id,
@@ -835,8 +835,8 @@ class ask_alyfToolset:
 			"run_method",
 			_("Call {0}").format(method),
 			reason,
-			validation_error_status=_("Method call proposal needs correction."),
-			prepared_status=_("Prepared method call proposal."),
+			validation_error_status="方法调用提案需要修正。",
+			prepared_status="已准备方法调用提案。",
 			method=method,
 			args=args or {},
 		)
@@ -856,8 +856,8 @@ class ask_alyfToolset:
 			"set_route",
 			_("Navigate to {0}").format(route_label or _("target route")),
 			reason,
-			validation_error_status=_("Route action needs correction."),
-			prepared_status=_("Prepared route action."),
+			validation_error_status="路由操作需要修正。",
+			prepared_status="已准备路由操作。",
 			route=route,
 		)
 
@@ -881,8 +881,8 @@ class ask_alyfToolset:
 			"new_doc",
 			_("Open new {0}").format(_(doctype)),
 			reason,
-			validation_error_status=_("New document action needs correction."),
-			prepared_status=_("Prepared new document action."),
+			validation_error_status="新建单据操作需要修正。",
+			prepared_status="已准备新建单据操作。",
 			doctype=doctype,
 			route_options=route_options or {},
 		)
@@ -901,8 +901,8 @@ class ask_alyfToolset:
 			"scroll_to_field",
 			_("Scroll to field {0}").format(fieldname),
 			reason,
-			validation_error_status=_("Scroll action needs correction."),
-			prepared_status=_("Prepared scroll action."),
+			validation_error_status="滚动操作需要修正。",
+			prepared_status="已准备滚动操作。",
 			fieldname=fieldname,
 		)
 
@@ -936,8 +936,8 @@ class ask_alyfToolset:
 			"frm_set_value",
 			_("Set field {0} on current form").format(fieldname),
 			reason,
-			validation_error_status=_("Set field action needs correction."),
-			prepared_status=_("Prepared set field action."),
+			validation_error_status="设置字段操作需要修正。",
+			prepared_status="已准备设置字段操作。",
 			**payload,
 		)
 
@@ -971,8 +971,8 @@ class ask_alyfToolset:
 			"frm_add_child",
 			_("Add a row to {0} on current form").format(fieldname),
 			reason,
-			validation_error_status=_("Add child row action needs correction."),
-			prepared_status=_("Prepared add child row action."),
+			validation_error_status="添加子表行操作需要修正。",
+			prepared_status="已准备添加子表行操作。",
 			**payload,
 		)
 
@@ -1007,8 +1007,8 @@ class ask_alyfToolset:
 			"show_chart",
 			summary,
 			reason,
-			validation_error_status=_("Chart action needs correction."),
-			prepared_status=_("Prepared chart display."),
+			validation_error_status="图表操作需要修正。",
+			prepared_status="已准备图表展示。",
 			requires_confirmation=False,
 			frappe_charts=frappe_charts,
 		)

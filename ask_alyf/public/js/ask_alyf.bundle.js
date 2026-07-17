@@ -940,7 +940,7 @@ import "./suggested_prompts";
 			frappe.realtime.on("ask_alyf_response_start", (message) => {
 				if (message.conversation !== this.state.conversation?.name) return;
 				this.setLoading(true);
-				this.setStatus(__("Thinking..."));
+				this.setStatus("正在思考...");
 			});
 
 			frappe.realtime.on("ask_alyf_file_attachment", (message) => {
@@ -1000,7 +1000,7 @@ import "./suggested_prompts";
 
 			if (!askAlyfBoot.configured) {
 				this.warningEl.classList.remove("ask_alyf-hidden");
-				this.warningEl.textContent = __("AI助手已显示，但尚未在设置中配置 API Key 或模型。");
+				this.warningEl.textContent = "AI助手已显示，但尚未在设置中配置 API 密钥或模型。";
 			}
 		}
 
@@ -1092,7 +1092,7 @@ import "./suggested_prompts";
 		restoreProcessingState() {
 			if (this.isAwaitingResponse()) {
 				this.setLoading(true);
-				this.setStatus(__("Processing..."));
+				this.setStatus("正在处理...");
 			}
 		}
 
@@ -1618,7 +1618,7 @@ import "./suggested_prompts";
 			if (!recentConversations.length) {
 				const emptyStateEl = document.createElement("div");
 				emptyStateEl.className = "ask_alyf-history-empty";
-				emptyStateEl.textContent = __("No conversations yet.");
+				emptyStateEl.textContent = "暂无对话。";
 				this.historyListEl.appendChild(emptyStateEl);
 				return;
 			}
@@ -1665,7 +1665,7 @@ import "./suggested_prompts";
 
 		async openConversation(conversationName) {
 			this.setLoading(true);
-			this.setStatus(__("Loading conversation..."));
+			this.setStatus("正在加载对话...");
 
 			try {
 				const response = await frappe.call({
@@ -1680,7 +1680,7 @@ import "./suggested_prompts";
 			} catch (error) {
 				this.setLoading(false);
 				this.setStatus("");
-				frappe.msgprint(error.message || __("Failed to open conversation."));
+				frappe.msgprint(error.message || "打开对话失败。");
 				this.renderHistoryList();
 			}
 		}
@@ -1905,7 +1905,7 @@ import "./suggested_prompts";
 			this.setActiveTab("chat");
 			this.toggle(true);
 			this.setLoading(true);
-			this.setStatus(__("Sending..."));
+			this.setStatus("正在发送...");
 
 			const optimisticMessage = {
 				id: `local-${Date.now()}`,
@@ -1942,13 +1942,13 @@ import "./suggested_prompts";
 					};
 				}
 				this.refreshConversationList();
-				this.setStatus(__("Waiting for response..."));
+				this.setStatus("正在等待回复...");
 			} catch (error) {
 				this.state.pendingAttachments = attachments;
 				this.renderPendingAttachments();
 				this.setLoading(false);
 				this.setStatus("");
-				frappe.msgprint(error.message || __("Failed to send message."));
+				frappe.msgprint(error.message || "发送消息失败。");
 			}
 		}
 
@@ -2177,20 +2177,20 @@ import "./suggested_prompts";
 
 		getMatchingForm(payload = {}) {
 			if (!window.cur_frm?.doc) {
-				throw new Error(__("No form is currently open."));
+				throw new Error("当前没有打开的表单。");
 			}
 
 			const expectedDoctype = payload.doctype;
 			if (expectedDoctype && expectedDoctype !== cur_frm.doc.doctype) {
 				throw new Error(
-					__("Current form is {0}, expected {1}.", [__(cur_frm.doc.doctype), __(expectedDoctype)]),
+					`当前表单是 ${__(cur_frm.doc.doctype)}，预期是 ${__(expectedDoctype)}。`,
 				);
 			}
 
 			const expectedDocname = payload.docname;
 			if (expectedDocname && expectedDocname !== cur_frm.doc.name) {
 				throw new Error(
-					__("Current document is {0}, expected {1}.", [cur_frm.doc.name, expectedDocname]),
+					`当前单据是 ${cur_frm.doc.name}，预期是 ${expectedDocname}。`,
 				);
 			}
 
@@ -2211,7 +2211,7 @@ import "./suggested_prompts";
 			if (tool === "scroll_to_field") {
 				const frm = this.getMatchingForm(payload);
 				if (typeof frm.scroll_to_field !== "function") {
-					throw new Error(__("Scrolling to fields is not available on this form."));
+					throw new Error("此表单不支持滚动到字段。");
 				}
 				frm.scroll_to_field(payload.fieldname);
 				return { fieldname: payload.fieldname };
@@ -2220,7 +2220,7 @@ import "./suggested_prompts";
 			if (tool === "frm_set_value") {
 				const frm = this.getMatchingForm(payload);
 				if (!frm.fields_dict?.[payload.fieldname]) {
-					throw new Error(__("Field {0} does not exist on this form.", [payload.fieldname]));
+					throw new Error(`此表单上不存在字段 ${payload.fieldname}。`);
 				}
 				await frm.set_value(payload.fieldname, payload.value);
 				return { fieldname: payload.fieldname };
@@ -2229,7 +2229,7 @@ import "./suggested_prompts";
 			if (tool === "frm_add_child") {
 				const frm = this.getMatchingForm(payload);
 				if (!frm.fields_dict?.[payload.fieldname]) {
-					throw new Error(__("Field {0} does not exist on this form.", [payload.fieldname]));
+					throw new Error(`此表单上不存在字段 ${payload.fieldname}。`);
 				}
 				const row = frm.add_child(payload.fieldname, payload.values || {});
 				frm.refresh_field(payload.fieldname);
@@ -2240,7 +2240,7 @@ import "./suggested_prompts";
 				return { tool: "show_chart" };
 			}
 
-			throw new Error(__("Unsupported frontend action: {0}", [tool]));
+			throw new Error(`不支持的前端操作：${tool}`);
 		}
 
 		async reportFrontendActionResult(operation, status, result = null, errorMessage = "") {
@@ -2278,7 +2278,7 @@ import "./suggested_prompts";
 				return false;
 			}
 			if (!operation.call_id) {
-				frappe.msgprint(__("Frontend action is missing a call ID."));
+				frappe.msgprint("前端操作缺少调用 ID。");
 				return false;
 			}
 
@@ -2291,7 +2291,7 @@ import "./suggested_prompts";
 				await this.reportFrontendActionResult(operation, "success", actionResult);
 				return true;
 			} catch (error) {
-				const errorMessage = error?.message || __("Failed to execute frontend action.");
+				const errorMessage = error?.message || "执行前端操作失败。";
 				try {
 					await this.reportFrontendActionResult(operation, "failed", null, errorMessage);
 				} catch {
@@ -2353,7 +2353,7 @@ import "./suggested_prompts";
 			} catch (error) {
 				this.restorePendingOperation(operation);
 				this.renderMessages();
-				frappe.msgprint(error.message || __("Failed to confirm pending operation."));
+				frappe.msgprint(error.message || "确认待处理操作失败。");
 			} finally {
 				this.setLoading(false);
 				this.setStatus("");
@@ -2391,7 +2391,7 @@ import "./suggested_prompts";
 			} catch (error) {
 				this.restorePendingOperation(operation);
 				this.renderMessages();
-				frappe.msgprint(error.message || __("Failed to reject pending operation."));
+				frappe.msgprint(error.message || "拒绝待处理操作失败。");
 			}
 		}
 
@@ -2545,7 +2545,7 @@ import "./suggested_prompts";
 					try {
 						chart.export();
 					} catch {
-						frappe.msgprint(__("Could not download chart."));
+						frappe.msgprint("无法下载图表。");
 					}
 				});
 				actions.appendChild(downloadButton);
@@ -2586,7 +2586,7 @@ import "./suggested_prompts";
 					}
 					if (!job.ok) {
 						mount.classList.add("ask_alyf-frappe-chart-error");
-						mount.textContent = __("Invalid chart data.");
+						mount.textContent = "图表数据无效。";
 						return;
 					}
 					const preferredHeight = Number(job.options.height);
@@ -2616,7 +2616,7 @@ import "./suggested_prompts";
 							}
 						} catch {
 							mount.classList.add("ask_alyf-frappe-chart-error");
-							mount.textContent = __("Could not render chart.");
+							mount.textContent = "无法渲染图表。";
 						}
 						return;
 					}
@@ -2683,7 +2683,7 @@ import "./suggested_prompts";
 
 			const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 			if (!Recognition) {
-				frappe.msgprint(__("Your browser does not support voice input."));
+				frappe.msgprint("您的浏览器不支持语音输入。");
 				return;
 			}
 

@@ -182,7 +182,7 @@
 		promptArea.prop("disabled", true);
 		triggerBtn.prop("disabled", true);
 		triggerBtn.addClass("is-active");
-		statusText.text(__("Generating...")).removeClass("hide");
+			statusText.text("正在生成...").removeClass("hide");
 
 		// Disable field input
 		if (control.editor && control.editor.setReadOnly) {
@@ -192,17 +192,17 @@
 		}
 
 		// Rotating status messages — subtle, informative, not playful.
-		var stageHandles = [
-			setTimeout(function () {
-				if (activeOverlay) statusText.text(__("Drafting..."));
-			}, 18000),
-			setTimeout(function () {
-				if (activeOverlay) statusText.text(__("Still generating..."));
-			}, 45000),
-			setTimeout(function () {
-				if (activeOverlay) statusText.text(__("This is taking a moment..."));
-			}, 90000),
-		];
+			var stageHandles = [
+				setTimeout(function () {
+					if (activeOverlay) statusText.text("正在起草...");
+				}, 18000),
+				setTimeout(function () {
+					if (activeOverlay) statusText.text("仍在生成...");
+				}, 45000),
+				setTimeout(function () {
+					if (activeOverlay) statusText.text("这可能需要一点时间...");
+				}, 90000),
+			];
 
 		frappe
 			.xcall("ask_alyf.ask_alyf.api.field_agent_run", {
@@ -223,7 +223,7 @@
 			})
 			.catch(function (err) {
 				var message =
-					(err && (err.message || err.exc_type || err.exc)) || __("Could not generate content.");
+					(err && (err.message || err.exc_type || err.exc)) || "无法生成内容。";
 				frappe.show_alert({ message: message, indicator: "red" }, 7);
 			})
 			.finally(function () {
