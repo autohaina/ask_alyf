@@ -1,4 +1,5 @@
 import "./field_agent";
+import "./suggested_prompts";
 
 (function () {
 	if (window.ask_alyfWidget) {
@@ -170,6 +171,7 @@ import "./field_agent";
 			this.statusBodyEl = null;
 			this.pendingOperationsEl = null;
 			this.suggestedPromptsEl = null;
+			this.suggestedPromptCache = { key: null, prompts: null };
 			this.fancyboxPromise = null;
 		}
 
@@ -1013,6 +1015,11 @@ import "./field_agent";
 		}
 
 		async applyConversation(conversation) {
+			const previousConversationName = this.state.conversation?.name || null;
+			const nextConversationName = conversation?.name || null;
+			if (previousConversationName !== nextConversationName) {
+				this.suggestedPromptCache = { key: null, prompts: null };
+			}
 			this.pendingStreamMessageId = null;
 			this.handledFrontendCallIds = new Set();
 			this.state.conversation = conversation;
@@ -1485,29 +1492,29 @@ import "./field_agent";
 
 		getConfiguredSuggestedPrompts(userRoles) {
 			const configuredPrompts = frappe?.boot?.ask_alyf?.suggested_prompts || [];
-			if (!Array.isArray(configuredPrompts) || !configuredPrompts.length) {
-				return [];
-			}
-
-			return configuredPrompts
-				.map((prompt) => ({
-					role: (prompt?.role || "").toString().trim(),
-					group: (prompt?.group || "").toString().trim(),
-					text: (prompt?.text || "").toString().trim(),
-				}))
-				.filter((prompt) => prompt.role && prompt.group && prompt.text && userRoles.has(prompt.role))
-				.slice(0, 3);
+			const groups = window.askAlyfSuggestedPrompts.groupConfiguredPrompts(
+				configuredPrompts,
+				userRoles,
+			);
+			return window.askAlyfSuggestedPrompts.selectPromptGroups(groups);
 		}
 
 		getSuggestedPrompts() {
+			const cacheKey = this.state.conversation?.name || "__new_conversation__";
+			if (this.suggestedPromptCache?.key === cacheKey) {
+				return [...(this.suggestedPromptCache.prompts || [])];
+			}
+
 			const userRoles = new Set(frappe.user_roles || []);
 			if (!userRoles.size) {
+				this.suggestedPromptCache = { key: cacheKey, prompts: [] };
 				return [];
 			}
 
 			const hasConfiguredPrompts = Boolean(frappe?.boot?.ask_alyf?.suggested_prompts_configured);
 			const configuredPrompts = this.getConfiguredSuggestedPrompts(userRoles);
 			if (hasConfiguredPrompts) {
+				this.suggestedPromptCache = { key: cacheKey, prompts: configuredPrompts };
 				return configuredPrompts;
 			}
 
@@ -1515,29 +1522,17 @@ import "./field_agent";
 				group.roles.some((role) => userRoles.has(role)),
 			);
 			if (!matchingGroups.length) {
+				this.suggestedPromptCache = { key: cacheKey, prompts: [] };
 				return [];
 			}
 
-			const shuffled = this.shuffleArray(
+			const prompts = window.askAlyfSuggestedPrompts.selectPromptGroups(
 				matchingGroups.map((group) => ({
 					label: group.label,
-					prompts: this.shuffleArray([...group.prompts]),
+					prompts: group.prompts,
 				})),
 			);
-
-			const prompts = [];
-			const indices = shuffled.map(() => 0);
-			for (let round = 0; prompts.length < 3 && round < 3; round++) {
-				for (let i = 0; i < shuffled.length && prompts.length < 3; i++) {
-					const group = shuffled[i];
-					const idx = indices[i];
-					if (idx < group.prompts.length) {
-						prompts.push({ group: group.label, text: group.prompts[idx] });
-						indices[i]++;
-					}
-				}
-			}
-
+			this.suggestedPromptCache = { key: cacheKey, prompts };
 			return prompts;
 		}
 
