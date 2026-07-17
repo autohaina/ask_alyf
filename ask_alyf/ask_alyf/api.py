@@ -577,7 +577,7 @@ def list_conversations(limit: int = 20) -> list[dict]:
 	limit = max(1, cint(limit))
 	conversations = frappe.get_list(
 		"Ask ALYF Conversation",
-		filters={"owner": frappe.session.user},
+		filters={"owner": frappe.session.user, "last_message_at": ["is", "set"]},
 		fields=["name", "title", "status", "modified", "last_message_at"],
 		order_by="modified desc",
 		limit=limit,
@@ -586,10 +586,32 @@ def list_conversations(limit: int = 20) -> list[dict]:
 	return conversations
 
 
+def _get_list_row_name(row) -> str | None:
+	return getattr(row, "name", None) or (row.get("name") if isinstance(row, dict) else None)
+
+
 @frappe.whitelist(methods=["POST"])
 def start_new_conversation() -> dict:
 	if not can_access_ask_alyf():
 		frappe.throw(_("You do not have access to Ask ALYF."))
+
+	empty_conversations = frappe.get_list(
+		"Ask ALYF Conversation",
+		filters={
+			"owner": frappe.session.user,
+			"status": "Active",
+			"last_message_at": ["is", "not set"],
+		},
+		fields=["name"],
+		order_by="modified desc",
+		limit=1,
+	)
+	if empty_conversations:
+		name = _get_list_row_name(empty_conversations[0])
+		if name:
+			doc = frappe.get_doc("Ask ALYF Conversation", name)
+			doc.check_permission("write")
+			return conversation_payload(doc)
 
 	doc = frappe.get_doc(
 		doctype="Ask ALYF Conversation",

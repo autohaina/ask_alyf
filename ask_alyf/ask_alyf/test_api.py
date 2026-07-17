@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from types import SimpleNamespace
 
 from frappe.tests import UnitTestCase
@@ -7,6 +7,23 @@ from ask_alyf.ask_alyf import api
 
 
 class UnitTestAskALYFApi(UnitTestCase):
+	def make_conversation_doc(self, **overrides):
+		doc = SimpleNamespace(
+			name="CONV-1",
+			title="New Conversation",
+			status="Active",
+			route="",
+			messages_json="[]",
+			pending_operation_json="",
+			last_context_json="",
+			insert=Mock(),
+			save=Mock(),
+			check_permission=Mock(),
+		)
+		for key, value in overrides.items():
+			setattr(doc, key, value)
+		return doc
+
 	def make_settings(self, **overrides):
 		class Settings:
 			allow_agent_mode = 0
@@ -193,6 +210,46 @@ class UnitTestAskALYFApi(UnitTestCase):
 		self.assertTrue(payload["panel_config"]["show_voice_input_button"])
 		self.assertTrue(payload["file_upload_enabled"])
 		self.assertTrue(payload["voice_input_enabled"])
+
+	def test_list_conversations_excludes_empty_conversations(self):
+		with (
+			patch.object(api, "can_access_ask_alyf", return_value=True),
+			patch.object(api.frappe, "get_list", return_value=[]) as get_list,
+			patch.dict(api.frappe.session, {"user": "user@example.com"}),
+		):
+			api.list_conversations()
+
+		self.assertEqual(
+			get_list.call_args.kwargs["filters"],
+			{
+				"owner": "user@example.com",
+				"last_message_at": ["is", "set"],
+			},
+		)
+
+	def test_start_new_conversation_reuses_existing_empty_conversation(self):
+		empty_conversation = self.make_conversation_doc(name="EMPTY-1")
+		new_conversation = self.make_conversation_doc(name="NEW-1")
+
+		def get_doc(*args, **kwargs):
+			if args == ("Ask ALYF Conversation", "EMPTY-1"):
+				return empty_conversation
+			return new_conversation
+
+		with (
+			patch.object(api, "can_access_ask_alyf", return_value=True),
+			patch.object(
+				api.frappe,
+				"get_list",
+				return_value=[SimpleNamespace(name="EMPTY-1")],
+			),
+			patch.object(api.frappe, "get_doc", side_effect=get_doc),
+			patch.dict(api.frappe.session, {"user": "user@example.com"}),
+		):
+			payload = api.start_new_conversation()
+
+		self.assertEqual(payload["name"], "EMPTY-1")
+		new_conversation.insert.assert_not_called()
 
 	def test_normalize_file_attachments_returns_file_metadata(self):
 		file_doc = SimpleNamespace(
