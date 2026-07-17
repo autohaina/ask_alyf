@@ -62,6 +62,16 @@ JSON_OBJECT_OUTPUT_INSTRUCTION = (
 	"Do not wrap the JSON in markdown fences. "
 	"Do not add explanatory prose before or after the JSON."
 )
+QUERY_FIELD_ALIASES = {
+	"Purchase Order": {
+		"delivery_date": "schedule_date",
+		"expected_delivery_date": "schedule_date",
+	},
+	"Purchase Order Item": {
+		"delivery_date": "expected_delivery_date",
+		"schedule_date": "expected_delivery_date",
+	},
+}
 
 
 @dataclass(frozen=True)
@@ -105,6 +115,63 @@ def coerce_field_list(value: str | list[str] | None) -> list[str] | None:
 		return [str(entry).strip() for entry in parsed if str(entry).strip()]
 
 	return [part.strip() for part in stripped.split(",") if part.strip()]
+
+
+def normalize_query_field(doctype: str, fieldname: Any) -> Any:
+	aliases = QUERY_FIELD_ALIASES.get((doctype or "").strip(), {})
+	if not aliases or not isinstance(fieldname, str):
+		return fieldname
+	return aliases.get(fieldname.strip(), fieldname)
+
+
+def normalize_query_expression(doctype: str, expression: str | None) -> str | None:
+	if not expression:
+		return expression
+
+	aliases = QUERY_FIELD_ALIASES.get((doctype or "").strip(), {})
+	normalized = expression
+	for source, target in aliases.items():
+		normalized = re.sub(rf"\b{re.escape(source)}\b", target, normalized)
+	return normalized
+
+
+def normalize_query_filters(doctype: str, filters: Any) -> Any:
+	if isinstance(filters, dict):
+		return {normalize_query_field(doctype, key): value for key, value in filters.items()}
+
+	if isinstance(filters, list):
+		normalized_filters = []
+		for row in filters:
+			if isinstance(row, list) and len(row) >= 2:
+				normalized_row = [*row]
+				if len(row) >= 4:
+					normalized_row[1] = normalize_query_field(doctype, row[1])
+				else:
+					normalized_row[0] = normalize_query_field(doctype, row[0])
+				normalized_filters.append(normalized_row)
+			else:
+				normalized_filters.append(row)
+		return normalized_filters
+
+	return filters
+
+
+def normalize_query_args(
+	doctype: str,
+	fields: list[str] | None = None,
+	filters: Any = None,
+	order_by: str | None = None,
+	group_by: str | None = None,
+) -> tuple[list[str] | None, Any, str | None, str | None]:
+	normalized_fields = (
+		[normalize_query_field(doctype, field) for field in fields] if fields is not None else None
+	)
+	return (
+		normalized_fields,
+		normalize_query_filters(doctype, filters),
+		normalize_query_expression(doctype, order_by),
+		normalize_query_expression(doctype, group_by),
+	)
 
 
 def get_settings():
@@ -335,6 +402,13 @@ def get_list(
 ) -> list[dict[str, Any]]:
 	limit = coerce_int(limit, 20, minimum=1)
 	fields = coerce_field_list(fields)
+	fields, filters, order_by, group_by = normalize_query_args(
+		doctype,
+		fields=fields,
+		filters=filters,
+		order_by=order_by,
+		group_by=group_by,
+	)
 	return client.get_list(
 		doctype=doctype,
 		fields=fields,
@@ -346,6 +420,7 @@ def get_list(
 
 
 def get_count(doctype: str, filters: dict[str, Any] | list | None = None) -> int:
+	filters = normalize_query_filters(doctype, filters)
 	return client.get_count(doctype=doctype, filters=filters)
 
 

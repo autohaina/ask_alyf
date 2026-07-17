@@ -292,6 +292,38 @@ class UnitTestCodeTools(UnitTestCase):
 		)
 		self.assertEqual(result, [])
 
+	def test_get_list_maps_purchase_order_delivery_date_alias(self):
+		with patch("ask_alyf.ask_alyf.tools.client.get_list", return_value=[]) as get_list:
+			result = tools.get_list(
+				"Purchase Order",
+				fields=["name", "supplier", "delivery_date"],
+				filters={"delivery_date": ["<", "2026-07-17"], "status": ["!=", "Completed"]},
+				order_by="delivery_date asc",
+			)
+
+		get_list.assert_called_once_with(
+			doctype="Purchase Order",
+			fields=["name", "supplier", "schedule_date"],
+			filters={"schedule_date": ["<", "2026-07-17"], "status": ["!=", "Completed"]},
+			order_by="schedule_date asc",
+			limit_page_length=20,
+			group_by=None,
+		)
+		self.assertEqual(result, [])
+
+	def test_get_count_maps_purchase_order_delivery_date_alias(self):
+		with patch("ask_alyf.ask_alyf.tools.client.get_count", return_value=3) as get_count:
+			result = tools.get_count(
+				"Purchase Order",
+				filters={"delivery_date": ["<", "2026-07-17"], "status": ["!=", "Completed"]},
+			)
+
+		get_count.assert_called_once_with(
+			doctype="Purchase Order",
+			filters={"schedule_date": ["<", "2026-07-17"], "status": ["!=", "Completed"]},
+		)
+		self.assertEqual(result, 3)
+
 	def test_get_file_id_uses_reference_filters(self):
 		expected_filters = {
 			"attached_to_doctype": "Sales Invoice",
