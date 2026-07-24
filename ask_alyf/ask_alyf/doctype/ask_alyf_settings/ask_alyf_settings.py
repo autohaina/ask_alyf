@@ -54,14 +54,9 @@ class AskALYFSettings(Document):
 	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
+		from ask_alyf.ask_alyf.doctype.ask_alyf_excluded_doctype.ask_alyf_excluded_doctype import AskALYFExcludedDocType
+		from ask_alyf.ask_alyf.doctype.ask_alyf_suggested_prompt.ask_alyf_suggested_prompt import AskALYFSuggestedPrompt
 		from frappe.types import DF
-
-		from ask_alyf.ask_alyf.doctype.ask_alyf_excluded_doctype.ask_alyf_excluded_doctype import (
-			AskALYFExcludedDocType,
-		)
-		from ask_alyf.ask_alyf.doctype.ask_alyf_suggested_prompt.ask_alyf_suggested_prompt import (
-			AskALYFSuggestedPrompt,
-		)
 
 		allow_agent_mode: DF.Check
 		allow_code_search: DF.Check

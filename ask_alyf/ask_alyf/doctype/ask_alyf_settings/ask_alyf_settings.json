@@ -88,7 +88,7 @@
    "fieldname": "system_prompt",
    "fieldtype": "Code",
    "label": "System Prompt",
-   "options": "Text"
+   "options": "Markdown"
   },
   {
    "default": "0",
@@ -120,64 +120,64 @@
   {
    "fieldname": "panel_config_tab",
    "fieldtype": "Tab Break",
-   "label": "面板配置"
+   "label": "\u9762\u677f\u914d\u7f6e"
   },
   {
-   "default": "海纳百川",
+   "default": "\u6d77\u7eb3\u767e\u5ddd",
    "fieldname": "panel_title",
    "fieldtype": "Data",
-   "label": "面板标题"
+   "label": "\u9762\u677f\u6807\u9898"
   },
   {
-   "default": "AI协作助手",
+   "default": "AI\u534f\u4f5c\u52a9\u624b",
    "fieldname": "panel_subtitle",
    "fieldtype": "Data",
-   "label": "面板副标题"
+   "label": "\u9762\u677f\u526f\u6807\u9898"
   },
   {
    "default": "/assets/ask_alyf/img/aizs.gif",
    "fieldname": "panel_logo",
    "fieldtype": "Attach Image",
-   "label": "悬浮图标"
+   "label": "\u60ac\u6d6e\u56fe\u6807"
   },
   {
    "fieldname": "panel_column_break",
    "fieldtype": "Column Break"
   },
   {
-   "default": "请输入您的业务问题...",
+   "default": "\u8bf7\u8f93\u5165\u60a8\u7684\u4e1a\u52a1\u95ee\u9898...",
    "fieldname": "input_placeholder",
    "fieldtype": "Data",
-   "label": "输入框占位文案"
+   "label": "\u8f93\u5165\u6846\u5360\u4f4d\u6587\u6848"
   },
   {
-   "default": "AI可能也会出错，包括关于数字和人员信息的内容。",
+   "default": "AI\u53ef\u80fd\u4e5f\u4f1a\u51fa\u9519\uff0c\u5305\u62ec\u5173\u4e8e\u6570\u5b57\u548c\u4eba\u5458\u4fe1\u606f\u7684\u5185\u5bb9\u3002",
    "fieldname": "panel_disclaimer",
    "fieldtype": "Small Text",
-   "label": "底部免责声明"
+   "label": "\u5e95\u90e8\u514d\u8d23\u58f0\u660e"
   },
   {
    "default": "1",
    "fieldname": "show_file_upload_button",
    "fieldtype": "Check",
-   "label": "显示附件按钮"
+   "label": "\u663e\u793a\u9644\u4ef6\u6309\u94ae"
   },
   {
    "default": "1",
    "fieldname": "show_voice_input_button",
    "fieldtype": "Check",
-   "label": "显示语音按钮"
+   "label": "\u663e\u793a\u8bed\u97f3\u6309\u94ae"
   },
   {
    "fieldname": "suggested_prompts_section",
    "fieldtype": "Section Break",
-   "label": "快捷提示"
+   "label": "\u5feb\u6377\u63d0\u793a"
   },
   {
-   "description": "每行绑定一个角色。按表格顺序展示；未配置时使用默认角色快捷提示。",
+   "description": "\u6bcf\u884c\u7ed1\u5b9a\u4e00\u4e2a\u89d2\u8272\u3002\u6309\u8868\u683c\u987a\u5e8f\u5c55\u793a\uff1b\u672a\u914d\u7f6e\u65f6\u4f7f\u7528\u9ed8\u8ba4\u89d2\u8272\u5feb\u6377\u63d0\u793a\u3002",
    "fieldname": "suggested_prompts",
    "fieldtype": "Table",
-   "label": "快捷提示",
+   "label": "\u5feb\u6377\u63d0\u793a",
    "options": "Ask ALYF Suggested Prompt"
   },
   {
@@ -245,7 +245,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-28 23:26:41.160263",
+ "modified": "2026-07-23 14:23:27.120396",
  "modified_by": "Administrator",
  "module": "Ask ALYF",
  "name": "Ask ALYF Settings",

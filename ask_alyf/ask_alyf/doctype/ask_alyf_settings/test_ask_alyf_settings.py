@@ -109,4 +109,7 @@ class IntegrationTestAskALYFSettings(IntegrationTestCase):
 	Use this class for testing interactions between multiple components.
 	"""
 
-	pass
+	def test_system_prompt_uses_markdown_code_mode(self):
+		field = frappe.get_meta("Ask ALYF Settings").get_field("system_prompt")
+
+		self.assertEqual(field.options, "Markdown")

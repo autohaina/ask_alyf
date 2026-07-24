@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2026-07-16 23:30:00.000000",
+ "creation": "2026-07-16 23:30:00",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -17,13 +17,13 @@
    "fieldname": "enabled",
    "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "启用"
+   "label": "\u542f\u7528"
   },
   {
    "fieldname": "role",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "角色",
+   "label": "\u89d2\u8272",
    "options": "Role",
    "reqd": 1
   },
@@ -31,14 +31,14 @@
    "fieldname": "group_label",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "分组标题",
+   "label": "\u5206\u7ec4\u6807\u9898",
    "reqd": 1
   },
   {
    "fieldname": "prompt",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "快捷提示",
+   "label": "\u5feb\u6377\u63d0\u793a",
    "reqd": 1
   }
  ],
@@ -46,7 +46,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-07-16 23:30:00.000000",
+ "modified": "2026-07-23 14:31:19.424849",
  "modified_by": "Administrator",
  "module": "Ask ALYF",
  "name": "Ask ALYF Suggested Prompt",
