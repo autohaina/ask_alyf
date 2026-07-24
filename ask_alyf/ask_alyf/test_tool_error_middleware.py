@@ -70,6 +70,13 @@ class UnitTestToolErrorMiddleware(UnitTestCase):
 			messages_json=dumps([user_message]),
 		)
 		conversation.insert(ignore_permissions=True)
+		self.addCleanup(
+			frappe.delete_doc,
+			"Ask ALYF Conversation",
+			conversation.name,
+			ignore_permissions=True,
+			force=True,
+		)
 
 		with patch(
 			"ask_alyf.ask_alyf.api.run_message",

@@ -113,3 +113,7 @@ class IntegrationTestAskALYFSettings(IntegrationTestCase):
 		field = frappe.get_meta("Ask ALYF Settings").get_field("system_prompt")
 
 		self.assertEqual(field.options, "Markdown")
+
+	def test_settings_has_no_numeric_multi_currency_test_field(self):
+		meta = frappe.get_meta("Ask ALYF Settings")
+		self.assertIsNone(meta.get_field("111"))

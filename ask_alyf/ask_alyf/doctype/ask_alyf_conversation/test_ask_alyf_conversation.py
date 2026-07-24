@@ -24,7 +24,31 @@ class UnitTestAskALYFConversation(UnitTestCase):
 			pending_operation_json=dumps(pending_operations) if pending_operations else "",
 		)
 		doc.insert(ignore_permissions=True)
+		self.addCleanup(
+			frappe.delete_doc,
+			"Ask ALYF Conversation",
+			doc.name,
+			ignore_permissions=True,
+			force=True,
+		)
 		return doc
+
+	def test_created_conversation_is_registered_for_cleanup(self):
+		with patch.object(self, "addCleanup") as add_cleanup:
+			doc = self.make_conversation()
+		add_cleanup.assert_called_once_with(
+			frappe.delete_doc,
+			"Ask ALYF Conversation",
+			doc.name,
+			ignore_permissions=True,
+			force=True,
+		)
+		frappe.delete_doc(
+			"Ask ALYF Conversation",
+			doc.name,
+			ignore_permissions=True,
+			force=True,
+		)
 
 	def test_send_message_returns_and_persists_background_job_id(self):
 		conversation = self.make_conversation()

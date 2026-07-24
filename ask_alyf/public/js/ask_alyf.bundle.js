@@ -997,6 +997,7 @@ import "./suggested_prompts";
 			});
 			const askAlyfBoot = response.message.ask_alyf || {};
 			frappe.boot.ask_alyf = askAlyfBoot;
+			this.resetSuggestedPromptCache();
 			await this.applyConversation(response.message.conversation);
 			this.applyPanelConfig();
 			this.syncSupportPhoneAction(askAlyfBoot);
@@ -1024,7 +1025,7 @@ import "./suggested_prompts";
 			const previousConversationName = this.state.conversation?.name || null;
 			const nextConversationName = conversation?.name || null;
 			if (previousConversationName !== nextConversationName) {
-				this.suggestedPromptCache = { key: null, prompts: null };
+				this.resetSuggestedPromptCache();
 			}
 			this.stopResponseJobMonitor();
 			this.pendingStreamMessageId = null;
@@ -1044,6 +1045,10 @@ import "./suggested_prompts";
 			this.renderHistoryList();
 			this.renderMessages();
 			this.restoreProcessingState();
+		}
+
+		resetSuggestedPromptCache() {
+			this.suggestedPromptCache = { key: null, prompts: null };
 		}
 
 		renderPendingAttachments() {
@@ -2129,6 +2134,7 @@ import "./suggested_prompts";
 				type: "POST",
 			});
 			this.setActiveTab("chat");
+			this.resetSuggestedPromptCache();
 			await this.applyConversation(response.message);
 			this.setModeToAskDefault();
 			this.setLoading(false);
