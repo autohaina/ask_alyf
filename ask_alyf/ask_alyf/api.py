@@ -8,8 +8,9 @@ from uuid import uuid4
 import frappe
 from frappe import _
 from frappe.utils import now_datetime
-from frappe.utils.background_jobs import enqueue
+from frappe.utils.background_jobs import enqueue, get_job_status
 from frappe.utils.data import cint
+from rq.job import JobStatus
 
 from ask_alyf.ask_alyf import field_agent
 from ask_alyf.ask_alyf.agent import run_message
@@ -105,6 +106,9 @@ def get_suggested_prompts(settings: Any | None = None) -> list[dict[str, str]]:
 		)
 
 	return prompts
+
+
+BACKGROUND_JOB_ID_KEY = "background_job_id"
 
 
 def _truncate_doc_for_size(
@@ -653,7 +657,14 @@ def send_message(
 	doc = get_or_create_conversation(conversation_name=conversation)
 
 	messages = get_messages(doc)
-	user_message = make_message("user", message, mode=normalized_mode, files=file_entries)
+	job_id = uuid4().hex
+	user_message = make_message(
+		"user",
+		message,
+		mode=normalized_mode,
+		files=file_entries,
+		**{BACKGROUND_JOB_ID_KEY: job_id},
+	)
 	messages.append(user_message)
 
 	if doc.title == _("New Conversation"):
@@ -668,6 +679,7 @@ def send_message(
 		"ask_alyf.ask_alyf.api.process_message_job",
 		queue="short",
 		enqueue_after_commit=True,
+		job_id=job_id,
 		conversation_name=doc.name,
 		message=message,
 		mode=normalized_mode,
@@ -678,7 +690,65 @@ def send_message(
 	return {
 		"conversation": doc.name,
 		"user_message_id": user_message["id"],
+		"job_id": job_id,
 	}
+
+
+@frappe.whitelist()
+def get_message_job_status(conversation: str, user_message_id: str, job_id: str) -> dict:
+	if not can_access_ask_alyf():
+		frappe.throw(_("You do not have access to Ask ALYF."))
+
+	doc = frappe.get_doc("Ask ALYF Conversation", conversation)
+	doc.check_permission("read")
+	messages = get_messages(doc)
+	user_message_index = next(
+		(
+			index
+			for index, item in enumerate(messages)
+			if item.get("role") == "user" and item.get("id") == user_message_id
+		),
+		None,
+	)
+	if user_message_index is None:
+		frappe.throw(_("The message could not be found in this conversation."))
+
+	user_message = messages[user_message_index]
+	if user_message.get("metadata", {}).get(BACKGROUND_JOB_ID_KEY) != job_id:
+		frappe.throw(_("The background job does not match this message."))
+
+	if any(item.get("role") == "assistant" for item in messages[user_message_index + 1 :]):
+		return {"status": "completed", "conversation": conversation_payload(doc)}
+
+	status = get_job_status(job_id)
+	if status in {
+		JobStatus.CREATED,
+		JobStatus.QUEUED,
+		JobStatus.STARTED,
+		JobStatus.DEFERRED,
+		JobStatus.SCHEDULED,
+	}:
+		return {"status": "pending"}
+	if status in {JobStatus.FINISHED, JobStatus.FAILED, JobStatus.STOPPED, JobStatus.CANCELED}:
+		doc.reload()
+		messages = get_messages(doc)
+		user_message_index = next(
+			(
+				index
+				for index, item in enumerate(messages)
+				if item.get("role") == "user" and item.get("id") == user_message_id
+			),
+			None,
+		)
+		if user_message_index is None:
+			frappe.throw(_("The message could not be found in this conversation."))
+		if any(item.get("role") == "assistant" for item in messages[user_message_index + 1 :]):
+			return {"status": "completed", "conversation": conversation_payload(doc)}
+	if status == JobStatus.FINISHED:
+		return {"status": "completed", "conversation": conversation_payload(doc)}
+	if status in {JobStatus.FAILED, JobStatus.STOPPED, JobStatus.CANCELED}:
+		return {"status": "failed"}
+	return {"status": "missing"}
 
 
 def process_message_job(
@@ -716,10 +786,10 @@ def process_message_job(
 		attached_files = result.get("attached_files")
 		if pending_operations and not response:
 			response = _("I've prepared the operation. Please review and confirm.")
-	except Exception as error:
+	except Exception:
 		frappe.log_error("Ask ALYF Agent Error")
 		frappe.clear_messages()
-		response = localize_agent_error_message(str(error))
+		response = _("I hit an error while processing that request. Please try again.")
 		pending_operations = []
 		document_extractions = None
 		attached_files = None
@@ -833,7 +903,7 @@ def confirm_pending_operation(conversation: str, call_id: str = "", mode: str = 
 			messages.append(make_message("assistant", content, mode=normalized_mode, **ack_meta))
 			save_messages(doc, messages)
 		else:
-			publish_status_update(doc.name, doc.owner, "正在生成回复...")
+			publish_status_update(doc.name, doc.owner, _("Generating response..."))
 			agent_result = continue_after_action(
 				doc,
 				normalized_mode,
@@ -900,7 +970,7 @@ def reject_pending_operation(conversation: str, call_id: str = "", mode: str = M
 			)
 			save_messages(doc, messages)
 		else:
-			publish_status_update(doc.name, doc.owner, "正在生成回复...")
+			publish_status_update(doc.name, doc.owner, _("Generating response..."))
 			agent_result = continue_after_action(
 				doc,
 				normalized_mode,
@@ -1015,7 +1085,7 @@ def frontend_action_result(
 	elif isinstance(result, dict):
 		result_payload = result
 
-	publish_status_update(doc.name, doc.owner, "正在生成回复...")
+	publish_status_update(doc.name, doc.owner, _("Generating response..."))
 	try:
 		messages = get_messages(doc)
 		if (pending_operation.get("tool") or "").strip() == "show_chart":

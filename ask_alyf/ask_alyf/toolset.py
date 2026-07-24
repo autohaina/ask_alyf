@@ -1,7 +1,8 @@
+import asyncio
 import contextlib
+import contextvars
 import functools
 import inspect
-import threading
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
@@ -23,7 +24,6 @@ from ask_alyf.ask_alyf.utils import parse_newline_list
 # `items` a concrete `type`, which OpenAI strict function-calling requires.
 Scalar = str | int | float | bool | None
 FrappeFilterList = list[list[Scalar | list[Scalar]]]
-_TOOL_DB_LOCK = threading.RLock()
 
 
 @dataclass
@@ -152,7 +152,7 @@ class ask_alyfToolset:
 	def get_list(
 		self,
 		doctype: str,
-		fields: str | list[str] | None = None,
+		fields: str | list[tools.FrappeSelectField] | None = None,
 		filters: dict[str, Any] | FrappeFilterList | None = None,
 		order_by: str | None = None,
 		limit: int = 20,
@@ -162,7 +162,10 @@ class ask_alyfToolset:
 
 		Args:
 			doctype: The DocType to query.
-			fields: Optional field name or field list to return.
+			fields: Optional field name or field list to return. Use dictionary syntax
+				for aggregate functions, for example
+				[{"SUM": "grand_total", "as": "total"}]. Never pass an aggregate as
+				a string such as "sum(grand_total) as total".
 			filters: Optional Frappe filters.
 			order_by: Optional ordering expression.
 			limit: Maximum number of rows to return.
@@ -441,10 +444,14 @@ class ask_alyfToolset:
 		return file_entry
 
 	def run_read_only_sql(self, query: str) -> list[dict[str, Any]]:
-		"""Run a read-only SQL query when the current user is allowed to do so.
+		"""Run one complete read-only SQL statement when the user is allowed to do so.
+
+		The query must include the statement keyword and all clauses, for example
+		"SELECT SUM(grand_total) AS total FROM `tabSales Invoice`". Do not pass only
+		a SELECT expression such as "sum(grand_total) as total".
 
 		Args:
-			query: A single read-only SQL query.
+			query: One complete SELECT, WITH, SHOW, EXPLAIN, or DESCRIBE statement.
 
 		Returns:
 			The SQL result rows.
@@ -1014,81 +1021,74 @@ class ask_alyfToolset:
 		)
 
 
+@dataclass(frozen=True)
+class _CallerFrappeContext:
+	site: str
+	sites_path: str
+	user: str
+	language: str
+
+
+def _capture_caller_frappe_context() -> _CallerFrappeContext:
+	return _CallerFrappeContext(
+		site=frappe.local.site,
+		sites_path=frappe.local.sites_path,
+		user=frappe.session.user,
+		language=frappe.local.lang,
+	)
+
+
 @contextlib.contextmanager
-def _isolated_db():
-	"""Run a block against a private Frappe DB connection.
-
-	LangGraph runs sync tools via `asyncio.to_thread`, which copies the
-	calling context (contextvars) into the worker thread. Frappe's
-	`frappe.local` is contextvar-backed, so the worker thread inherits the
-	same `frappe.local.db` pymysql connection as the agent's main thread.
-	pymysql connections are not safe for concurrent use, so parallel tool
-	calls (and subagent tool calls) corrupt the shared connection's packet
-	stream — surfacing as `InterfaceError(0, '')` / `Packet sequence number
-	wrong`.
-
-	This opens a fresh connection bound to the current thread/context, runs
-	the block, then closes it and restores the inherited binding. The agent
-	thread's own connection is never touched or closed.
-
-	No-op when Frappe isn't initialized (e.g. direct unit-test calls).
-	"""
-	conf = getattr(frappe.local, "conf", None)
-	if not conf or not getattr(conf, "db_name", None):
-		yield
-		return
-
-	inherited_db = getattr(frappe.local, "db", None)
-
-	frappe.connect(set_admin_as_user=False)
+def _private_frappe_context(caller: _CallerFrappeContext):
+	"""Initialize and destroy a private Frappe context for one tool call."""
+	private_db = None
 	try:
+		frappe.init(caller.site, sites_path=caller.sites_path)
+		frappe.connect(set_admin_as_user=False)
+		private_db = frappe.local.db
+		frappe.set_user(caller.user)
+		frappe.local.lang = caller.language
 		yield
-		frappe.db.commit()
-	except Exception:
-		with contextlib.suppress(Exception):
-			frappe.db.rollback()
+		private_db.commit()
+	except BaseException:
+		if private_db is not None:
+			with contextlib.suppress(Exception):
+				private_db.rollback()
+		frappe.clear_messages()
 		raise
 	finally:
 		with contextlib.suppress(Exception):
-			frappe.local.db.close()
-		frappe.local.db = inherited_db
+			frappe.destroy()
 
 
 def clear_messages_on_tool_error(func):
-	"""Wrap a tool so each call runs on a private DB connection and queued
-	Frappe messages are discarded on exception.
-
-	The private connection (see `_isolated_db`) is what makes tool calls
-	safe under LangGraph's threaded tool executor; the error handling keeps
-	user-facing popups from firing when a tool fails inside the agent loop.
-	"""
+	"""Run each tool call in a fresh Frappe context and DB connection."""
 
 	if inspect.iscoroutinefunction(func):
 
 		@functools.wraps(func)
 		async def async_wrapper(*args, **kwargs):
-			try:
-				with _TOOL_DB_LOCK:
-					with _isolated_db():
-						return await func(*args, **kwargs)
-			except Exception:
-				frappe.clear_messages()
-				raise
+			caller = _capture_caller_frappe_context()
+			return await asyncio.create_task(
+				_run_async_with_private_frappe_context(caller, func, args, kwargs),
+				context=contextvars.Context(),
+			)
 
 		return async_wrapper
 
 	@functools.wraps(func)
 	def wrapper(*args, **kwargs):
-		try:
-			return _run_with_isolated_db(func, args, kwargs)
-		except Exception:
-			frappe.clear_messages()
-			raise
+		caller = _capture_caller_frappe_context()
+		return contextvars.Context().run(_run_with_private_frappe_context, caller, func, args, kwargs)
 
 	return wrapper
 
 
-def _run_with_isolated_db(func, args, kwargs):
-	with _TOOL_DB_LOCK:
-		with _isolated_db():
-			return func(*args, **kwargs)
+def _run_with_private_frappe_context(caller, func, args, kwargs):
+	with _private_frappe_context(caller):
+		return func(*args, **kwargs)
+
+
+async def _run_async_with_private_frappe_context(caller, func, args, kwargs):
+	with _private_frappe_context(caller):
+		return await func(*args, **kwargs)
