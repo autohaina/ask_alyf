@@ -88,6 +88,18 @@ class AskALYFSettings(Document):
 	def is_code_search_enabled(self) -> bool:
 		return bool(self.allow_code_search)
 
+	def validate(self):
+		self.docstatus = 0
+
+	def submit(self):
+		self._throw_not_submittable()
+
+	def before_submit(self):
+		self._throw_not_submittable()
+
+	def _throw_not_submittable(self):
+		frappe.throw(_("Ask ALYF Settings is a single settings page. Save it instead of submitting it."))
+
 
 @frappe.whitelist()
 def get_available_models(configuration: str = "chat") -> list[dict[str, str]]:

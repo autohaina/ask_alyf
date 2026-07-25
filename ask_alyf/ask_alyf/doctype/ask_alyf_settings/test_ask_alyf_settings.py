@@ -102,6 +102,25 @@ class UnitTestAskALYFSettings(UnitTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			ask_alyf_settings.get_model_config_fields("audio")
 
+	def test_before_submit_rejects_settings_submission(self):
+		settings = frappe.get_doc({"doctype": "Ask ALYF Settings"})
+
+		with self.assertRaises(frappe.ValidationError):
+			settings.before_submit()
+
+	def test_submit_rejects_settings_submission(self):
+		settings = frappe.get_doc({"doctype": "Ask ALYF Settings"})
+
+		with self.assertRaises(frappe.ValidationError):
+			settings.submit()
+
+	def test_validate_keeps_settings_unsubmitted(self):
+		settings = frappe.get_doc({"doctype": "Ask ALYF Settings", "docstatus": 1})
+
+		settings.validate()
+
+		self.assertEqual(settings.docstatus, 0)
+
 
 class IntegrationTestAskALYFSettings(IntegrationTestCase):
 	"""
@@ -113,6 +132,12 @@ class IntegrationTestAskALYFSettings(IntegrationTestCase):
 		field = frappe.get_meta("Ask ALYF Settings").get_field("system_prompt")
 
 		self.assertEqual(field.options, "Markdown")
+
+	def test_settings_is_single_and_not_submittable(self):
+		meta = frappe.get_meta("Ask ALYF Settings")
+
+		self.assertTrue(meta.issingle)
+		self.assertFalse(meta.is_submittable)
 
 	def test_settings_has_no_numeric_multi_currency_test_field(self):
 		meta = frappe.get_meta("Ask ALYF Settings")

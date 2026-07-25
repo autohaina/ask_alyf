@@ -259,6 +259,33 @@ def localize_agent_error_message(message: str) -> str:
 	return message
 
 
+def looks_like_unexecuted_tool_call(response: str) -> bool:
+	response = (response or "").strip()
+	if not response:
+		return False
+
+	lowered = response.lower()
+	return "<tool_call" in lowered and "<function=" in lowered
+
+
+def ensure_visible_agent_response(response: str, pending_operations: list[dict[str, Any]]) -> str:
+	response = (response or "").strip()
+	if pending_operations and not response:
+		return _("I've prepared the operation. Please review and confirm.")
+
+	if looks_like_unexecuted_tool_call(response):
+		return _(
+			"模型返回了未执行的工具调用内容，无法生成可显示结果。请检查 Ask ALYF Settings 中配置的模型是否支持 OpenAI tool calling，或换用支持工具调用的模型后重试。"
+		)
+
+	if not response:
+		return _(
+			"模型没有返回可显示内容。请检查 Ask ALYF Settings 中配置的模型是否支持 OpenAI tool calling，或换用支持工具调用的模型后重试。"
+		)
+
+	return response
+
+
 def normalize_file_attachments(files: str | list | None) -> list[dict[str, str]]:
 	file_items = frappe.parse_json(files) if isinstance(files, str) else (files or [])
 	if not isinstance(file_items, list):
@@ -327,8 +354,7 @@ def apply_agent_result_to_conversation(
 	document_extractions = result.get("document_extractions")
 	attached_files = result.get("attached_files")
 
-	if new_operations and not response:
-		response = _("I've prepared the operation. Please review and confirm.")
+	response = ensure_visible_agent_response(response, new_operations)
 
 	if isinstance(attached_files, list) and attached_files:
 		file_names = ", ".join(f.get("file_name") or f.get("name") or "" for f in attached_files)
@@ -784,8 +810,7 @@ def process_message_job(
 			pending_operations = []
 		document_extractions = result.get("document_extractions")
 		attached_files = result.get("attached_files")
-		if pending_operations and not response:
-			response = _("I've prepared the operation. Please review and confirm.")
+		response = ensure_visible_agent_response(response, pending_operations)
 	except Exception:
 		frappe.log_error("Ask ALYF Agent Error")
 		frappe.clear_messages()

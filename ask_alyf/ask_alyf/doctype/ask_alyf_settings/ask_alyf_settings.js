@@ -12,7 +12,12 @@ const VISION_PROVIDER_FIELDS = [
 
 frappe.ui.form.on("Ask ALYF Settings", {
 	async refresh(frm) {
+		disable_submit_action(frm);
 		await refresh_model_options(frm);
+	},
+
+	before_submit() {
+		frappe.throw(__("Ask ALYF Settings is a single settings page. Save it instead of submitting it."));
 	},
 
 	async llm_provider(frm) {
@@ -44,6 +49,33 @@ frappe.ui.form.on("Ask ALYF Settings", {
 		await refresh_vision_model_options(frm);
 	},
 });
+
+function disable_submit_action(frm) {
+	if (!frm) {
+		return;
+	}
+
+	if (frm.meta) {
+		frm.meta.is_submittable = 0;
+	}
+
+	setTimeout(() => {
+		const primaryButton = frm.page?.btn_primary;
+		const primaryLabel = primaryButton?.text?.().trim();
+		if (primaryLabel === __("Submit")) {
+			frm.page.set_primary_action(__("Save"), () => frm.save("Save"));
+		}
+
+		frm.page?.remove_inner_button?.(__("Submit"));
+		frm.page?.actions_menu?.find?.("a, button").each(function () {
+			const $item = $(this);
+			if ($item.text().trim() === __("Submit")) {
+				$item.closest("li").remove();
+				$item.remove();
+			}
+		});
+	}, 0);
+}
 
 async function refresh_model_options(frm) {
 	toggle_vision_provider_fields(frm);

@@ -180,6 +180,52 @@ class UnitTestAskALYFConversation(UnitTestCase):
 		self.assertEqual(len(complete_events), 1)
 		self.assertEqual(complete_events[0]["payload"]["pending_operations"], [expected_with_id])
 
+	def test_process_message_job_persists_visible_message_for_empty_agent_response(self):
+		user_message = api.make_message("user", "Show DocTypes", mode=api.MODE_ASK)
+		conversation = self.make_conversation(messages=[user_message])
+
+		with patch(
+			"ask_alyf.ask_alyf.api.run_message",
+			return_value={"response": "", "pending_operations": []},
+		):
+			api.process_message_job(
+				conversation_name=conversation.name,
+				message="Show DocTypes",
+				mode=api.MODE_ASK,
+				context_data={},
+				user_message_id=user_message["id"],
+			)
+
+		conversation.reload()
+		messages = loads(conversation.messages_json, [])
+		self.assertTrue(messages[-1]["content"].strip())
+		self.assertIn("模型没有返回可显示内容", messages[-1]["content"])
+		self.assertIn("OpenAI tool calling", messages[-1]["content"])
+
+	def test_process_message_job_replaces_unexecuted_tool_call_markup(self):
+		user_message = api.make_message("user", "Show DocTypes", mode=api.MODE_ASK)
+		conversation = self.make_conversation(messages=[user_message])
+
+		with patch(
+			"ask_alyf.ask_alyf.api.run_message",
+			return_value={
+				"response": "<tool_call><function=run_read_only_sql></function></tool_call>",
+				"pending_operations": [],
+			},
+		):
+			api.process_message_job(
+				conversation_name=conversation.name,
+				message="Show DocTypes",
+				mode=api.MODE_ASK,
+				context_data={},
+				user_message_id=user_message["id"],
+			)
+
+		conversation.reload()
+		messages = loads(conversation.messages_json, [])
+		self.assertIn("模型返回了未执行的工具调用内容", messages[-1]["content"])
+		self.assertNotIn("<tool_call>", messages[-1]["content"])
+
 	def test_process_message_job_persists_document_extractions(self):
 		user_message = api.make_message("user", "What is on this invoice?", mode=api.MODE_ASK)
 		conversation = self.make_conversation(messages=[user_message])
