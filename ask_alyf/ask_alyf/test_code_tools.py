@@ -7,11 +7,12 @@ from unittest.mock import MagicMock, patch
 
 import frappe
 from frappe.tests import UnitTestCase
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from ask_alyf.ask_alyf import tools
 from ask_alyf.ask_alyf.agent import (
 	ASK_ALYF_EXCLUDED_TOOLS,
+	coerce_invalid_tool_call_args,
 	ask_alyfAgentRunner,
 	try_prepare_direct_user_creation,
 )
@@ -642,6 +643,47 @@ class UnitTestCodeTools(UnitTestCase):
 		self.assertEqual(result["pending_operations"], [])
 		self.assertEqual(result["document_extractions"], [])
 		self.assertEqual(result["attached_files"], [])
+
+	def test_coerce_invalid_tool_call_args_merges_concatenated_json_objects(self):
+		args = coerce_invalid_tool_call_args('{}{"query":"select 1","limit":10}')
+
+		self.assertEqual(args, {"query": "select 1", "limit": 10})
+
+	def test_run_repairs_invalid_tool_call_args_and_continues_agent(self):
+		runner = self.make_runner(allow_code_search=False, mode="Ask")
+		tool_calls = []
+
+		def run_read_only_sql(query: str):
+			tool_calls.append(query)
+			return [{"answer": 1}]
+
+		first_response = {
+			"messages": [
+				AIMessage(
+					content="",
+					invalid_tool_calls=[
+						{
+							"id": "call-1",
+							"name": "run_read_only_sql",
+							"args": '{}{"query":"select 1"}',
+							"error": "invalid json",
+						}
+					],
+				)
+			]
+		}
+		second_response = {"messages": [AIMessage(content="查询结果是 1。")]}
+		invoke = MagicMock(side_effect=[first_response, second_response])
+		runner.agent = SimpleNamespace(invoke=invoke)
+		runner._build_tools = lambda: [run_read_only_sql]
+
+		result = runner.run("查一下", conversation_history=[])
+
+		self.assertEqual(result["response"], "查询结果是 1。")
+		self.assertEqual(tool_calls, ["select 1"])
+		self.assertEqual(invoke.call_count, 2)
+		continued_messages = invoke.call_args_list[1].args[0]["messages"]
+		self.assertTrue(any(isinstance(message, ToolMessage) for message in continued_messages))
 
 	def test_agent_mode_tools_include_proposals_but_no_host_mutation_or_shell(self):
 		"""Model-visible tools must contain proposal operations but no direct

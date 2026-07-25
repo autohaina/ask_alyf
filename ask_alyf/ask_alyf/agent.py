@@ -1,3 +1,4 @@
+import json
 import re
 import threading
 from collections.abc import Callable
@@ -15,7 +16,7 @@ from frappe import _
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolErrorMiddleware
 from langchain.agents.middleware.types import ToolCallRequest
-from langchain_core.messages import AnyMessage, HumanMessage
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 
 from ask_alyf.ask_alyf import tools
@@ -54,6 +55,55 @@ def _on_tool_error(exc: Exception, request: ToolCallRequest) -> str:
 def build_tool_error_middleware() -> ToolErrorMiddleware:
 	"""Build middleware that returns tool failures to the model for retry."""
 	return ToolErrorMiddleware(on_error=_on_tool_error)
+
+
+def coerce_invalid_tool_call_args(raw_args: Any) -> dict[str, Any] | None:
+	"""Coerce malformed OpenAI-compatible tool-call args into one JSON object.
+
+	Some OpenAI-compatible providers return arguments as concatenated JSON
+	objects, for example ``{}{"query":"select 1"}``. LangChain correctly marks
+	that as an invalid tool call, but the second object is usable. Merge decoded
+	objects from left to right so an empty leading object is harmless.
+	"""
+	if isinstance(raw_args, dict):
+		return raw_args
+	if not isinstance(raw_args, str):
+		return None
+
+	text = raw_args.strip()
+	if not text:
+		return None
+
+	try:
+		decoded = json.loads(text)
+		return decoded if isinstance(decoded, dict) else None
+	except Exception:
+		pass
+
+	decoder = json.JSONDecoder()
+	position = 0
+	merged: dict[str, Any] = {}
+	decoded_any = False
+	while position < len(text):
+		while position < len(text) and text[position].isspace():
+			position += 1
+		if position >= len(text):
+			break
+		try:
+			decoded, next_position = decoder.raw_decode(text, position)
+		except Exception:
+			return None
+		if not isinstance(decoded, dict):
+			return None
+		merged.update(decoded)
+		decoded_any = True
+		position = next_position
+
+	return merged if decoded_any else None
+
+
+def _json_tool_content(value: Any) -> str:
+	return json.dumps(value, ensure_ascii=False, default=str)[:20000]
 
 
 # Deep Agents exposes built-in filesystem write tools (``write_file``,
@@ -369,10 +419,76 @@ Mode awareness and behavior:
 		messages.append(HumanMessage(content=message))
 		return messages
 
+	def _get_tool_map(self) -> dict[str, Callable[..., Any]]:
+		return {tool.__name__: tool for tool in self._build_tools()}
+
+	def _repair_invalid_tool_calls(
+		self,
+		result_messages: list[AnyMessage],
+	) -> tuple[AIMessage, list[ToolMessage]] | None:
+		if not result_messages:
+			return None
+
+		last = result_messages[-1]
+		invalid_tool_calls = getattr(last, "invalid_tool_calls", None) or []
+		if not invalid_tool_calls:
+			return None
+
+		tool_map = self._get_tool_map()
+		repaired_calls = []
+		tool_messages = []
+
+		for invalid_call in invalid_tool_calls:
+			name = invalid_call.get("name") if isinstance(invalid_call, dict) else None
+			if not name or name not in tool_map:
+				continue
+			args = coerce_invalid_tool_call_args(invalid_call.get("args"))
+			if args is None:
+				continue
+			call_id = invalid_call.get("id") or f"repaired_{len(repaired_calls) + 1}"
+			repaired_calls.append({"name": name, "args": args, "id": call_id})
+			try:
+				tool_result = tool_map[name](**args)
+			except Exception as exc:
+				tool_result = {"error": type(exc).__name__, "message": str(exc)}
+			tool_messages.append(
+				ToolMessage(
+					content=_json_tool_content(tool_result),
+					tool_call_id=call_id,
+					name=name,
+				)
+			)
+
+		if not repaired_calls:
+			return None
+
+		return AIMessage(content="", tool_calls=repaired_calls), tool_messages
+
+	def _invoke_with_invalid_tool_call_repair(
+		self,
+		input_messages: list[AnyMessage],
+		*,
+		max_repairs: int = 3,
+	) -> dict[str, Any]:
+		result = self.agent.invoke({"messages": input_messages})
+		messages = result.get("messages") if isinstance(result, dict) else []
+		continued_messages = list(input_messages)
+
+		for _attempt in range(max_repairs):
+			repair = self._repair_invalid_tool_calls(messages or [])
+			if not repair:
+				break
+			repaired_ai_message, tool_messages = repair
+			continued_messages = [*continued_messages, repaired_ai_message, *tool_messages]
+			result = self.agent.invoke({"messages": continued_messages})
+			messages = result.get("messages") if isinstance(result, dict) else []
+
+		return result
+
 	def run(self, message: str, conversation_history: list[dict[str, Any]]) -> dict[str, Any]:
 		self.runtime.conversation_history = conversation_history or []
 		input_messages = self._build_input_messages(message)
-		result = self.agent.invoke({"messages": input_messages})
+		result = self._invoke_with_invalid_tool_call_repair(input_messages)
 		response_text = ""
 		result_messages = result.get("messages") if isinstance(result, dict) else None
 		if result_messages:
