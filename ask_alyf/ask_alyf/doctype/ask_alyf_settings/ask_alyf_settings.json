@@ -16,6 +16,7 @@
   "allow_code_search",
   "allow_file_upload",
   "allow_field_agent",
+  "custom_1111",
   "panel_config_tab",
   "panel_title",
   "panel_subtitle",
@@ -239,13 +240,20 @@
    "fieldname": "vision_model",
    "fieldtype": "Autocomplete",
    "label": "Vision Model"
+  },
+  {
+   "fieldname": "custom_1111",
+   "fieldtype": "Currency",
+   "label": "1111",
+   "options": "Multi Currency",
+   "precision": "2"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-07-23 14:23:27.120396",
+ "modified": "2026-07-25 10:30:51.725642",
  "modified_by": "Administrator",
  "module": "Ask ALYF",
  "name": "Ask ALYF Settings",
